@@ -1,13 +1,13 @@
-#include "DeterministicPCGPRNG.h"
+#include "DDDeterministicPCGPRNG.h"
 
-DeterministicPCGPRNG::DeterministicPCGPRNG() {}
+DDDeterministicPCGPRNG::DDDeterministicPCGPRNG() {}
 
 /**
  * @brief DeterministicPCGPRNG::Seed
  * Give the DeterministicPCGPRNG a new random number seed and initialize the object to use it.
  * @param newSeed The 64 bit new seed value
  */
-void DeterministicPCGPRNG::Seed(uint64_t newSeed)
+void DDDeterministicPCGPRNG::Seed(uint64_t newSeed)
 {
     m_state = newSeed + m_increment;
     (void)get32();
@@ -18,7 +18,7 @@ void DeterministicPCGPRNG::Seed(uint64_t newSeed)
  * Returns a pseudorandom 32 bit number
  * @return Unsigned 32 bit number
  */
-uint32_t DeterministicPCGPRNG::get32()
+uint32_t DDDeterministicPCGPRNG::get32()
 {
     uint64_t oldstate = m_state;
     // Advance internal state (Standard LCG step)
@@ -35,7 +35,7 @@ uint32_t DeterministicPCGPRNG::get32()
  * Returns a pseudorandom 64 bit number
  * @return Unsigned 64 bit number
  */
-uint64_t DeterministicPCGPRNG::get64()
+uint64_t DDDeterministicPCGPRNG::get64()
 {
     //This 64 bit value is just 2 32 bits stapled together
     uint64_t high = get32();
@@ -49,7 +49,7 @@ uint64_t DeterministicPCGPRNG::get64()
  * @param size The number of bytes to be returned
  * @return A vector containing the list of bytes
  */
-std::vector<uint8_t> DeterministicPCGPRNG::getBytes(size_t size) {
+std::vector<uint8_t> DDDeterministicPCGPRNG::getBytes(size_t size) {
     std::vector<uint8_t> buffer(size);
     size_t i = 0;
 

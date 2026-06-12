@@ -1,5 +1,5 @@
-#ifndef DETERMINISTICPCGPRNG_H
-#define DETERMINISTICPCGPRNG_H
+#ifndef DDDETERMINISTICPCGPRNG_H
+#define DDDETERMINISTICPCGPRNG_H
 
 #include <cstdint>
 #include <vector>
@@ -11,10 +11,10 @@
  * Uses the permuted congruential generator
  * https://en.wikipedia.org/wiki/Permuted_congruential_generator
  */
-class DeterministicPCGPRNG
+class DDDeterministicPCGPRNG
 {
 public:
-    DeterministicPCGPRNG();
+    DDDeterministicPCGPRNG();
 
     void Seed(uint64_t newSeed);
     uint32_t get32();
@@ -27,4 +27,4 @@ private:
     uint64_t const m_increment  = 1442695040888963407u;	// Or an arbitrary odd constant
 };
 
-#endif // DETERMINISTICPCGPRNG_H
+#endif // DDDETERMINISTICPCGPRNG_H

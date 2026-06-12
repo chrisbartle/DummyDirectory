@@ -6,8 +6,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(DummyDir main.cpp
-    DeterministicPCGPRNG.h DeterministicPCGPRNG.cpp
+    DDDeterministicPCGPRNG.h DDDeterministicPCGPRNG.cpp
     DDParameters.h DDParameters.cpp
+    DDManifest.h DDManifest.cpp
 )
 
 # We want to make the build timestamp available

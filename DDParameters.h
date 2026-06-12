@@ -14,6 +14,9 @@ public:
     bool isFlag(std::string inFlagName);
     std::string getFlag(std::string inFlagName);
 
+    std::string getOperation();
+    std::string getDirectoryPath();
+
 private:
     std::unordered_map<std::string, std::string> _flags;
     std::vector<std::string> _arguments;
