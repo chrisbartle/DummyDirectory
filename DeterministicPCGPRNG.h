@@ -2,6 +2,7 @@
 #define DETERMINISTICPCGPRNG_H
 
 #include <cstdint>
+#include <vector>
 
 /**
  * @brief The DeterministicPCGPRNG class
@@ -18,6 +19,7 @@ public:
     void Seed(uint64_t newSeed);
     uint32_t get32();
     uint64_t get64();
+    std::vector<uint8_t> getBytes(size_t size);
 
 private:
     uint64_t       m_state      = 0;
