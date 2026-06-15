@@ -65,6 +65,17 @@ std::string DDParameters::getFlag(std::string inFlagName)
 }
 
 /**
+ * @brief DDParameters::setFlag
+ * This can be used to change the value of certain flags or clean them up if needed
+ * @param inFlagName Name of the flag
+ * @param inFlag The value of the flag
+ */
+void DDParameters::setFlag(std::string inFlagName, std::string inFlag)
+{
+    _flags[inFlagName] = inFlag;
+}
+
+/**
  * @brief DDParameters::getOperation
  * Returns the requested operation
  * @return The operation, empty if the argument wasn't provided (or if replay flag was set)

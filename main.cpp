@@ -3,6 +3,8 @@
 
 #include "cmake_vals.h"
 #include "DDParameters.h"
+#include "DDManifest.h"
+#include "DDOperation.h"
 
 using namespace std;
 
@@ -33,6 +35,11 @@ int main(int argc, char *argv[])
             cout << "An operation must be provided." << endl;
             return 1;
         }
+        else if (!DDOperation::ValidateOperationType(mainParameters.getOperation()))
+        {
+            cout << mainParameters.getOperation() << " is not a valid type of operation" << endl;
+            return 1;
+        }
 
         //Get the directory from the parameter. Does it exist? Is it a directory?
         if (mainParameters.getDirectoryPath().empty())
@@ -56,7 +63,16 @@ int main(int argc, char *argv[])
 
         //The DummyDir.manifest file always sits in the root of the dummy directory.
         std::filesystem::path absoluteManifestPath = absoluteDirectoryPath / "DummyDir.manifest";
+        DDManifest manifest;
+        manifest.SetFilepath(absoluteManifestPath);
+        manifest.LoadFromFile();
 
+        //Perform the operation
+        DDOperation operation(manifest);
+        operation.DoOperation(mainParameters);
+
+        //Save the new manifest
+        manifest.SaveToFile();
     }
     catch (const std::exception& e) {
         std::cerr << "Critical Error (std::exception): " << e.what() << std::endl;

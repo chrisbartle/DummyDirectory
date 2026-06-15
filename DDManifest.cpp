@@ -1,11 +1,21 @@
 #include "DDManifest.h"
 #include <fstream>
+#include <iostream>
 
-DDManifest::DDManifest() {}
+#include "cmake_vals.h"
 
-void DDManifest::SetFilename(std::string inFilename)
+using namespace std;
+
+DDManifest::DDManifest()
 {
-    m_absoluteManifestPath = inFilename;
+    //The directory list should always include the root directory
+    m_directories.emplace_back();
+    m_directories.back().setRelativePath("");
+}
+
+void DDManifest::SetFilepath(std::filesystem::path inFilepath)
+{
+    m_absoluteManifestPath = inFilepath;
 }
 
 bool DDManifest::LoadFromFile()
@@ -19,31 +29,48 @@ bool DDManifest::LoadFromFile()
     if (!manifestFile.is_open())
     {
         std::error_code ec = std::make_error_code(std::errc::no_such_file_or_directory);
-        throw std::filesystem::filesystem_error("Failed to open manifest file", m_absoluteManifestPath, ec);
+        throw std::filesystem::filesystem_error("Failed to open manifest file for read", m_absoluteManifestPath, ec);
     }
 
     //Loop through all of the lines
     std::string lineString;
+    uint64_t lineNumber = 0;
     while (std::getline(manifestFile, lineString))
     {
-        //Any line that starts with a # should be ignored.
-        if (lineString.starts_with('#'))
-            continue;
-
-        std::stringstream ss;
-        //Get the first two items in the string, the filename and the file size
-        std::string filename;
-        std::string filesize;
-        std::string filehash;
-        ss >> std::quoted(filename) >> filesize;
-        //Now the second item normally contains the file's size but it might just contain the word "directory"
-        //If this is seen then the item is a directory, not a file
-        if (filesize == "directory")
-            void();
-        else
+        lineNumber++;
+        try
         {
-            //It's a file so grab the hash as well
-            ss >> filehash;
+            //Any line that starts with a # should be ignored.
+            if (lineString.starts_with('#'))
+                continue;
+
+            std::stringstream ss;
+            //Get the first two items in the string, the filename and the file size
+            std::string filename;
+            std::string filesize;
+            std::string filehash;
+            ss >> std::quoted(filename) >> filesize;
+            //Now the second item normally contains the file's size but it might just contain the word "directory"
+            //If this is seen then the item is a directory, not a file
+            if (filesize == "directory")
+            {
+                m_directories.emplace_back();
+                m_directories.back().setRelativePath(filename);
+            }
+            else
+            {
+                //Add a new file to the list and fill in its properties
+                m_files.emplace_back();
+                m_files.back().setRelativePathname(filename);
+                m_files.back().setSize(std::stoull(filesize));
+                //It's a file so grab the hash as well
+                ss >> filehash;
+                m_files.back().setHash(filehash);
+            }
+        }
+        catch(...)
+        {
+            throw std::runtime_error("Unable to read line " + std::to_string(lineNumber) + " in " + m_absoluteManifestPath.string());
         }
 
     }
@@ -53,5 +80,32 @@ bool DDManifest::LoadFromFile()
 
 void DDManifest::SaveToFile()
 {
+    //Open a stream and start writing
+    std::ofstream manifestFile(m_absoluteManifestPath, std::ios::trunc);
+    if (!manifestFile.is_open())
+    {
+        std::error_code ec = std::make_error_code(std::errc::no_such_file_or_directory);
+        throw std::filesystem::filesystem_error("Failed to open manifest file for write", m_absoluteManifestPath, ec);
+    }
+
+    //First we write out some comments to identify the file
+    manifestFile << "# Dummy Directory manifest file" << endl;
+    manifestFile << "# Version " << APP_VERSION_STRING << endl;
+
+    //Next we write out all of our directories
+    for (const auto& directory : m_directories)
+    {
+        //We never need to write out the root directory
+        if (directory.relativePath() == "")
+            continue;
+        //Encase the directory name in quotes
+        manifestFile << std::quoted(directory.relativePath().string()) << "directory" << endl;
+    }
+
+    //Finally we write out the list of all files
+    for (const auto& file : m_files)
+    {
+        manifestFile << std::quoted(file.relativePathname().string()) << to_string(file.size()) << file.hash() << endl;
+    }
 
 }

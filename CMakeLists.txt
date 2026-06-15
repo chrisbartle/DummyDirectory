@@ -9,6 +9,9 @@ add_executable(DummyDir main.cpp
     DDDeterministicPCGPRNG.h DDDeterministicPCGPRNG.cpp
     DDParameters.h DDParameters.cpp
     DDManifest.h DDManifest.cpp
+    DDFile.h DDFile.cpp
+    DDDirectory.h DDDirectory.cpp
+    DDOperation.h DDOperation.cpp
 )
 
 # We want to make the build timestamp available

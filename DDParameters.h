@@ -13,6 +13,7 @@ public:
 
     bool isFlag(std::string inFlagName);
     std::string getFlag(std::string inFlagName);
+    void setFlag(std::string inFlagName, std::string inFlag);
 
     std::string getOperation();
     std::string getDirectoryPath();
