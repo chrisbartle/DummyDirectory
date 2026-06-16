@@ -14,13 +14,14 @@ public:
     bool isFlag(std::string inFlagName);
     std::string getFlag(std::string inFlagName);
     void setFlag(std::string inFlagName, std::string inFlag);
+    std::string validateFlags();
 
     std::string getOperation();
     std::string getDirectoryPath();
 
 private:
-    std::unordered_map<std::string, std::string> _flags;
-    std::vector<std::string> _arguments;
+    std::unordered_map<std::string, std::string> m_flags;
+    std::vector<std::string> m_arguments;
 };
 
 #endif // DDPARAMETERS_H

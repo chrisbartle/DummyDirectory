@@ -1,4 +1,5 @@
 #include "DDParameters.h"
+#include "DDOperation.h"
 
 DDParameters::DDParameters() {}
 
@@ -23,21 +24,27 @@ void DDParameters::LoadFromCommandLine(int argc, char* argv[])
             if (equals_pos != std::string::npos) {
                 std::string key = arg.substr(0, equals_pos);
                 std::string val = arg.substr(equals_pos + 1);
-                _flags[key] = val;
+                m_flags[key] = val;
             }
             // Handle space-separated key value (e.g., -o dir)
             else if (i + 1 < argc && argv[i + 1][0] != '-') {
-                _flags[arg] = argv[i + 1];
-                static_cast<void>(++i); // Skip the next index since we just consumed it as a value
+                //Some flags don't take a value
+                if (m_flags[arg] == "verbose")
+                    m_flags[arg] = "";
+                else
+                {
+                    m_flags[arg] = argv[i + 1];
+                    static_cast<void>(++i); // Skip the next index since we just consumed it as a value
+                }
             }
             // It's a standalone boolean flag (e.g., --verbose)
             else {
-                _flags[arg] = "true";
+                m_flags[arg] = "";
             }
         }
         // If it doesn't start with '-', process it immediately as an argument!
         else {
-            _arguments.push_back(arg);
+            m_arguments.push_back(arg);
         }
     }
 }
@@ -50,7 +57,7 @@ void DDParameters::LoadFromCommandLine(int argc, char* argv[])
  */
 bool DDParameters::isFlag(std::string inFlagName)
 {
-    return _flags.contains(inFlagName);
+    return m_flags.contains(inFlagName);
 }
 
 /**
@@ -61,7 +68,7 @@ bool DDParameters::isFlag(std::string inFlagName)
  */
 std::string DDParameters::getFlag(std::string inFlagName)
 {
-    return _flags[inFlagName];
+    return m_flags[inFlagName];
 }
 
 /**
@@ -72,7 +79,21 @@ std::string DDParameters::getFlag(std::string inFlagName)
  */
 void DDParameters::setFlag(std::string inFlagName, std::string inFlag)
 {
-    _flags[inFlagName] = inFlag;
+    m_flags[inFlagName] = inFlag;
+}
+
+/**
+ * @brief DDParameters::validateFlags
+ * Iterate through all of the flags and confirm that they are all valid
+ * @return Empty string indicates that all flags are valid otherwise a multi-line
+ * string is returned with a list of found problems. This can be shown to the user
+ */
+std::string DDParameters::validateFlags()
+{
+    std::string validationErrors = "";
+    for (const auto& flag : m_flags)
+        validationErrors = DDOperation::ValidateFlag(getOperation(), flag.first, flag.second) + "\n";
+    return validationErrors;
 }
 
 /**
@@ -86,9 +107,9 @@ std::string DDParameters::getOperation()
     //becomes the directory path
     if (isFlag("replay"))
         return "";
-    if (_arguments.size() < 1)
+    if (m_arguments.size() < 1)
         return "";
-    return _arguments[0];
+    return m_arguments[0];
 }
 
 /**
@@ -101,11 +122,11 @@ std::string DDParameters::getDirectoryPath()
     //If the replay flag is used then the first argument is the directory path not the operation
     if (isFlag("replay"))
     {
-        if (_arguments.size() == 0)
+        if (m_arguments.size() == 0)
             return "";
-        return _arguments[0];
+        return m_arguments[0];
     }
-    if (_arguments.size() < 2)
+    if (m_arguments.size() < 2)
         return "";
-    return _arguments[1];
+    return m_arguments[1];
 }

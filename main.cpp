@@ -35,9 +35,18 @@ int main(int argc, char *argv[])
             cout << "An operation must be provided." << endl;
             return 1;
         }
-        else if (!DDOperation::ValidateOperationType(mainParameters.getOperation()))
+        string operationValidation = DDOperation::ValidateOperationType(mainParameters.getOperation());
+        if (operationValidation.length() > 0)
         {
-            cout << mainParameters.getOperation() << " is not a valid type of operation" << endl;
+            cout << operationValidation << endl;
+            return 1;
+        }
+
+        //Validate the flags and make sure that they're valid
+        string flagValidation = mainParameters.validateFlags();
+        if (flagValidation.length() > 0)
+        {
+            cout << flagValidation << endl;
             return 1;
         }
 

@@ -10,6 +10,8 @@ class DDFile
 public:
     DDFile();
 
+    static std::string getApplicationIDString();
+
     std::filesystem::path relativePathname() const;
     void setRelativePathname(const std::filesystem::path &newRelativePathname);
 

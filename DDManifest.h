@@ -1,7 +1,6 @@
 #ifndef DDMANIFEST_H
 #define DDMANIFEST_H
 
-#include <string>
 #include <filesystem>
 #include <vector>
 
