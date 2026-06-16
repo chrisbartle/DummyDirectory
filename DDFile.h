@@ -21,10 +21,19 @@ public:
     std::string hash() const;
     void setHash(const std::string &newHash);
 
+    enum FileProcessingStatus { NONE, QUEUED, STARTED, COMPLETE, ERROR };
 private:
     std::filesystem::path m_relativePathname;
     uint64_t m_size;
     std::string m_hash;
+    //These processing variables are ephemeral and only apply to the current
+    //operation
+    std::string m_processingOperation;
+    std::string m_processingFileType;
+    std::string m_processingModificationType;
+    FileProcessingStatus m_processingStatus;
+    uint64_t m_processingSize;
+    std::string m_processingError;
 };
 
 #endif // DDFILE_H
