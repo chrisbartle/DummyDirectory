@@ -1,7 +1,11 @@
 #include "DDFile.h"
 #include "cmake_vals.h"
 
-DDFile::DDFile() {}
+DDFile::DDFile()
+{
+    m_size = 0;
+    m_processingStatus = NONE;
+}
 
 /**
  * @brief DDFile::getApplicationIDString
@@ -63,3 +67,15 @@ void DDFile::setHash(const std::string &newHash)
 {
     m_hash = newHash;
 }
+
+DDFile::FileProcessingStatus DDFile::processingStatus() const
+{
+    return m_processingStatus;
+}
+
+void DDFile::setProcessingStatus(FileProcessingStatus newProcessingStatus)
+{
+    m_processingStatus = newProcessingStatus;
+}
+
+

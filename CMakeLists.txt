@@ -12,6 +12,7 @@ add_executable(DummyDir main.cpp
     DDFile.h DDFile.cpp
     DDDirectory.h DDDirectory.cpp
     DDOperation.h DDOperation.cpp
+    BS_thread_pool.hpp
 )
 
 # We want to make the build timestamp available

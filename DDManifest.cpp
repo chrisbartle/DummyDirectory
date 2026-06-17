@@ -11,6 +11,8 @@ DDManifest::DDManifest()
     //The directory list should always include the root directory
     m_directories.emplace_back();
     m_directories.back().setRelativePath("");
+    m_totalSize = 0;
+
 }
 
 void DDManifest::SetFilepath(std::filesystem::path inFilepath)
@@ -62,7 +64,9 @@ bool DDManifest::LoadFromFile()
                 //Add a new file to the list and fill in its properties
                 m_files.emplace_back();
                 m_files.back().setRelativePathname(filename);
-                m_files.back().setSize(std::stoull(filesize));
+                uint64_t filesizei = std::stoull(filesize);
+                m_files.back().setSize(filesizei);
+                m_totalSize += filesizei;
                 //It's a file so grab the hash as well
                 ss >> filehash;
                 m_files.back().setHash(filehash);

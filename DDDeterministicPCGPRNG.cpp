@@ -2,7 +2,13 @@
 
 #include <stdexcept>
 
-DDDeterministicPCGPRNG::DDDeterministicPCGPRNG() {}
+DDDeterministicPCGPRNG::DDDeterministicPCGPRNG(uint64_t newSeed)
+{
+    if (newSeed > 0)
+        Seed(newSeed);
+    else
+        m_state = m_increment;
+}
 
 /**
  * @brief DeterministicPCGPRNG::Seed
@@ -75,6 +81,30 @@ std::vector<uint8_t> DDDeterministicPCGPRNG::getBytes(size_t size) {
         }
     }
     return buffer;
+}
+
+/**
+ * @brief DDDeterministicPCGPRNG::getSimpleString
+ * Returns a string of only letters and numbers
+ * @param size Number of characters in the string
+ * @return String of characters
+ */
+std::string DDDeterministicPCGPRNG::getSimpleString(size_t size)
+{
+    static const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+    const uint64_t maxIndex = sizeof(charset) - 2; // -1 for null terminator, -1 for 0-based indexing
+
+    std::string randomString;
+    randomString.reserve(size); // Optimize memory allocation upfront
+
+    // 2. Loop and pick a random character for each position
+    for (size_t i = 0; i < size; ++i) {
+        uint64_t randomIndex = getFromRange(0, maxIndex);
+        randomString += charset[randomIndex];
+    }
+
+    return randomString;
 }
 
 /**

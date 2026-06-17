@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
 
         //Perform the operation
         DDOperation operation(manifest);
+        operation.SetDefaultParameters(mainParameters);
         operation.DoOperation(mainParameters);
 
         //Save the new manifest
