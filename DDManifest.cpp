@@ -112,3 +112,21 @@ void DDManifest::SaveToFile()
     }
 
 }
+
+/**
+ * @brief DDManifest::PostOperationCleanup
+ * Updates the manifest's total size and clears up the various status flags.
+ * This should be called in between operations but it can destroy run information.
+ */
+void DDManifest::PostOperationCleanup()
+{
+    uint64_t totalFileSize = 0;
+    //Iterate through the files
+    for (const auto& file : m_files)
+    {
+        if (file->processingStatus() != DDFile::NONE)
+            file->setProcessingStatus(DDFile::NONE);
+        totalFileSize += file->size();
+    }
+    m_totalSize = totalFileSize;
+}

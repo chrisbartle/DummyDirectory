@@ -1,6 +1,7 @@
 #include "DDOperation.h"
 #include "DDDeterministicPCGPRNG.h"
 #include "BS_thread_pool.hpp"
+#include "DDMD5Hasher.h"
 
 #include <random>
 #include <fstream>
@@ -250,18 +251,22 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
         }
 
         uint64_t writtenSoFar = 0;
+        DDMD5Hasher hasher;
         while (writtenSoFar < size)
         {
             //A new file always starts with the prefix
             if (writtenSoFar == 0)
             {
-                outFile.write(m_filePrefix.data(), m_filePrefix.length());
+                string prefix = m_filePrefix;
                 //Binary files follow with a null, text files with a space
                 if (isText)
-                    outFile.write(" ", 1);
+                    m_filePrefix += ' ';
                 else
-                    outFile.write("\0", 1);
-                writtenSoFar += m_filePrefix.length()+1;
+                    m_filePrefix += '\0';
+                outFile.write(prefix.data(), prefix.length());
+                writtenSoFar += prefix.length();
+                hasher.update(prefix.data(), prefix.length());
+                continue;
             }
 
             uint64_t bufferSize = BUFFER_SIZE;
@@ -275,15 +280,20 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
                 while (textBuffer.length() < bufferSize)
                     textBuffer += textDictionary[rng.getFromRange(0, textDictionary.size())] + " ";
                 outFile.write(textBuffer.data(), bufferSize);
+                hasher.update(textBuffer.data(), bufferSize);
             }
             else
             {
                 buffer = rng.getBytes(bufferSize);
                 outFile.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+                hasher.update(reinterpret_cast<const char*>(buffer.data()), buffer.size());
             }
             writtenSoFar += bufferSize;
         }
         outFile.close();
+        //Update the file stats
+        file.setSize(size);
+        file.setHash(hasher.finalize());
     }
     catch (const std::exception& e) {
         file.recordProcessingError("Exception thrown when processing file " + absolutePathname.string() + ": " + e.what());
@@ -294,9 +304,6 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
         file.recordProcessingError("Unknown exception when processing file " + absolutePathname.string());
         return;
     }
-    //Update the file stats
-    file.setSize(size);
-    file.setHash("x");
     file.setProcessingStatus(DDFile::COMPLETE);
 }
 

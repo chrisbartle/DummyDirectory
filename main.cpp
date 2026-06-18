@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
         //Perform the operation
         DDOperation operation(manifest);
         operation.SetDefaultParameters(mainParameters);
+        cout << "Processing..." << endl;
         operation.DoOperation(mainParameters);
 
         //Look for errors
@@ -91,6 +92,11 @@ int main(int argc, char *argv[])
             if (thisFile.processingStatus() == DDFile::ERROR)
                 cout << thisFile.getProcessingError() << endl;
         }
+        manifest.PostOperationCleanup();
+
+        cout << "Processing complete!" << endl;
+        cout << "Directory contains " << to_string(manifest.getTotalDirectoryCount()) << " directories and " << to_string(manifest.getTotalFileCount()) << " files" << endl;
+        cout << to_string(manifest.getTotalSize()) << " bytes total" << endl;
 
         //Save the new manifest
         manifest.SaveToFile();
