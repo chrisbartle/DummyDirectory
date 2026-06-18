@@ -9,10 +9,9 @@ using namespace std;
 DDManifest::DDManifest()
 {
     //The directory list should always include the root directory
-    m_directories.emplace_back();
-    m_directories.back().setRelativePath("");
+    m_directories.emplace_back(std::make_unique<DDDirectory>());
+    m_directories.back()->setRelativePath("");
     m_totalSize = 0;
-
 }
 
 void DDManifest::SetFilepath(std::filesystem::path inFilepath)
@@ -46,7 +45,7 @@ bool DDManifest::LoadFromFile()
             if (lineString.starts_with('#'))
                 continue;
 
-            std::stringstream ss;
+            std::stringstream ss(lineString);
             //Get the first two items in the string, the filename and the file size
             std::string filename;
             std::string filesize;
@@ -56,20 +55,20 @@ bool DDManifest::LoadFromFile()
             //If this is seen then the item is a directory, not a file
             if (filesize == "directory")
             {
-                m_directories.emplace_back();
-                m_directories.back().setRelativePath(filename);
+                m_directories.emplace_back(std::make_unique<DDDirectory>());
+                m_directories.back()->setRelativePath(filename);
             }
             else
             {
                 //Add a new file to the list and fill in its properties
-                m_files.emplace_back();
-                m_files.back().setRelativePathname(filename);
+                m_files.emplace_back(std::make_unique<DDFile>());
+                m_files.back()->setRelativePathname(filename);
                 uint64_t filesizei = std::stoull(filesize);
-                m_files.back().setSize(filesizei);
+                m_files.back()->setSize(filesizei);
                 m_totalSize += filesizei;
                 //It's a file so grab the hash as well
                 ss >> filehash;
-                m_files.back().setHash(filehash);
+                m_files.back()->setHash(filehash);
             }
         }
         catch(...)
@@ -100,16 +99,16 @@ void DDManifest::SaveToFile()
     for (const auto& directory : m_directories)
     {
         //We never need to write out the root directory
-        if (directory.relativePath() == "")
+        if (directory->relativePath() == "")
             continue;
         //Encase the directory name in quotes
-        manifestFile << std::quoted(directory.relativePath().string()) << "directory" << endl;
+        manifestFile << std::quoted(directory->relativePath().string()) << " directory" << endl;
     }
 
     //Finally we write out the list of all files
     for (const auto& file : m_files)
     {
-        manifestFile << std::quoted(file.relativePathname().string()) << to_string(file.size()) << file.hash() << endl;
+        manifestFile << std::quoted(file->relativePathname().string()) << " " << to_string(file->size()) << " " << file->hash() << endl;
     }
 
 }

@@ -6,6 +6,8 @@
 #include "DDManifest.h"
 #include "DDOperation.h"
 
+
+
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -56,8 +58,7 @@ int main(int argc, char *argv[])
             cout << "A valid directory path must be provided." << endl;
             return 1;
         }
-        std::filesystem::path relativeDirectoryPath = mainParameters.getDirectoryPath();
-        std::filesystem::path absoluteDirectoryPath = std::filesystem::absolute(relativeDirectoryPath).lexically_normal();
+        std::filesystem::path absoluteDirectoryPath = mainParameters.getAbsoluteDirectoryPath();
         if (!std::filesystem::exists(absoluteDirectoryPath))
         {
             //It does not exist so create it
@@ -75,11 +76,21 @@ int main(int argc, char *argv[])
         DDManifest manifest;
         manifest.SetFilepath(absoluteManifestPath);
         manifest.LoadFromFile();
+        cout << "Manifest contains " << to_string(manifest.getTotalDirectoryCount()) << " directories and " << to_string(manifest.getTotalFileCount()) << " files" << endl;
+        cout << to_string(manifest.getTotalSize()) << " bytes total" << endl;
 
         //Perform the operation
         DDOperation operation(manifest);
         operation.SetDefaultParameters(mainParameters);
         operation.DoOperation(mainParameters);
+
+        //Look for errors
+        for (int eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
+        {
+            DDFile& thisFile = manifest.getFileByPos(eloop);
+            if (thisFile.processingStatus() == DDFile::ERROR)
+                cout << thisFile.getProcessingError() << endl;
+        }
 
         //Save the new manifest
         manifest.SaveToFile();

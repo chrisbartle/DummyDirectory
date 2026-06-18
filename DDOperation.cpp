@@ -163,11 +163,11 @@ void DDOperation::DoOperation(DDParameters &parameters)
                     fileExtension = ".bin";
 
                 //Pick a directory where this file will be added
-                uint64_t dirPos = rng.getFromRange(0, m_manifest.getTotalDirectoryCount());
+                uint64_t dirPos = rng.getFromRange(0, m_manifest.getTotalDirectoryCount()-1);
                 DDDirectory directory = m_manifest.getDirectoryByPos(dirPos);
                 //Add the new file to manifest and make up a filename
                 string filename = "DD_" + rng.getSimpleString(10) + fileExtension;
-                DDFile file = m_manifest.addFile();
+                DDFile& file = m_manifest.addFile();
                 file.setRelativePathname(directory.relativePath() / filename);
                 //Come up with the file's size
                 uint64_t fileSize = rng.processFlag(parameters.getFlag("filesize"), m_manifest.getTotalSize());
@@ -209,7 +209,7 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
     if (file.processingStatus() != DDFile::QUEUED)
         return;
 
-    filesystem::path absolutePathname = filesystem::absolute(file.relativePathname()).lexically_normal();
+    filesystem::path absolutePathname = parameters.ConvertToAbsolutePath(file.relativePathname());
 
     //Mark that this file is being processed
     file.setProcessingStatus(DDFile::STARTED);
@@ -229,11 +229,13 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
         bool isText = false;
         if (file.relativePathname().extension() == ".txt")
             isText = true;
-        else
-            ofstreamFlags |= std::ios::binary;
+//        else
+        //Looks like we want the binary flag set as not setting it creates OS dependant
+        //rules on how to handle text.
+        ofstreamFlags |= std::ios::binary;
 
         //Open filestream
-        std::ofstream outFile(file.relativePathname(), ofstreamFlags);
+        std::ofstream outFile(absolutePathname, ofstreamFlags);
 
         //If this is a text file, generate a dictionary of random words
         //between 20 and 1000 words
@@ -253,7 +255,7 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
             //A new file always starts with the prefix
             if (writtenSoFar == 0)
             {
-                outFile.write(m_filePrefix.c_str(), m_filePrefix.length());
+                outFile.write(m_filePrefix.data(), m_filePrefix.length());
                 //Binary files follow with a null, text files with a space
                 if (isText)
                     outFile.write(" ", 1);
@@ -272,11 +274,14 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
                 textBuffer.resize(bufferSize);
                 while (textBuffer.length() < bufferSize)
                     textBuffer += textDictionary[rng.getFromRange(0, textDictionary.size())] + " ";
-                buffer.insert(buffer.end(), textBuffer.begin(), textBuffer.end());
+                outFile.write(textBuffer.data(), bufferSize);
             }
             else
+            {
                 buffer = rng.getBytes(bufferSize);
-            outFile.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+                outFile.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+            }
+            writtenSoFar += bufferSize;
         }
         outFile.close();
     }
@@ -289,6 +294,9 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
         file.recordProcessingError("Unknown exception when processing file " + absolutePathname.string());
         return;
     }
+    //Update the file stats
+    file.setSize(size);
+    file.setHash("x");
     file.setProcessingStatus(DDFile::COMPLETE);
 }
 

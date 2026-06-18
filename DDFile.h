@@ -28,6 +28,7 @@ public:
     FileProcessingStatus processingStatus() const;
     void setProcessingStatus(FileProcessingStatus newProcessingStatus);
     void recordProcessingError(std::string inError) {m_processingStatus = ERROR; m_processingError = inError; };
+    std::string getProcessingError() { return m_processingError; };
 
 private:
     std::filesystem::path m_relativePathname;
