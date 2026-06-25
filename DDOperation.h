@@ -1,6 +1,8 @@
 #ifndef DDOPERATION_H
 #define DDOPERATION_H
 
+#include <atomic>
+
 #include "DDManifest.h"
 #include "DDParameters.h"
 

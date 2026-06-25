@@ -1,5 +1,6 @@
 #include "DDDeterministicPCGPRNG.h"
 
+#include <cmath>
 #include <stdexcept>
 
 DDDeterministicPCGPRNG::DDDeterministicPCGPRNG(uint64_t newSeed)

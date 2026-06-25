@@ -1,6 +1,7 @@
 #ifndef DDPARAMETERS_H
 #define DDPARAMETERS_H
 
+#include <vector>
 #include <string>
 #include <unordered_map>
 #include <filesystem>
@@ -19,8 +20,8 @@ public:
 
     std::string getOperation();
     std::string getDirectoryPath();
-    std::filesystem::path getAbsoluteDirectoryPath() {return std::filesystem::absolute(getDirectoryPath()).lexically_normal(); };
-    std::filesystem::path ConvertToAbsolutePath(std::filesystem::path inPath) {return getAbsoluteDirectoryPath() / inPath; };
+    std::filesystem::path getAbsoluteDirectoryPath() {return std::filesystem::absolute(getDirectoryPath()).lexically_normal(); }
+    std::filesystem::path ConvertToAbsolutePath(std::filesystem::path inPath) {return getAbsoluteDirectoryPath() / inPath; }
 
 private:
     std::unordered_map<std::string, std::string> m_flags;
