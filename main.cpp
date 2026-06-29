@@ -80,10 +80,10 @@ int main(int argc, char *argv[])
         cout << to_string(manifest.getTotalSize()) << " bytes total" << endl;
 
         //Perform the operation
-        DDOperation operation(manifest);
-        operation.SetDefaultParameters(mainParameters);
+        unique_ptr<DDOperation> operation = DDOperation::getOperation(mainParameters.getOperation(), manifest);
+        operation->SetDefaultParameters(mainParameters);
         cout << "Processing..." << endl;
-        operation.DoOperation(mainParameters);
+        operation->DoOperation(mainParameters);
 
         //Look for errors
         for (int eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)

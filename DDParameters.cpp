@@ -24,22 +24,22 @@ void DDParameters::LoadFromCommandLine(int argc, char* argv[])
             if (equals_pos != std::string::npos) {
                 std::string key = arg.substr(0, equals_pos);
                 std::string val = arg.substr(equals_pos + 1);
-                m_flags[key] = val;
+                setFlag(key, val);
             }
             // Handle space-separated key value (e.g., -o dir)
             else if (i + 1 < argc && argv[i + 1][0] != '-') {
                 //Some flags don't take a value
-                if (m_flags[arg] == "verbose")
-                    m_flags[arg] = "";
+                if (arg == "--verbose")
+                    setFlag(arg, "");
                 else
                 {
-                    m_flags[arg] = argv[i + 1];
+                    setFlag(arg, argv[i + 1]);
                     static_cast<void>(++i); // Skip the next index since we just consumed it as a value
                 }
             }
             // It's a standalone boolean flag (e.g., --verbose)
             else {
-                m_flags[arg] = "";
+                setFlag(arg, "");
             }
         }
         // If it doesn't start with '-', process it immediately as an argument!
@@ -74,12 +74,18 @@ std::string DDParameters::getFlag(std::string inFlagName)
 /**
  * @brief DDParameters::setFlag
  * This can be used to change the value of certain flags or clean them up if needed
- * @param inFlagName Name of the flag
+ * @param inFlagName Name of the flag. -- are stripped from the flag name. Short flags are converted to their long form.
  * @param inFlag The value of the flag
  */
 void DDParameters::setFlag(std::string inFlagName, std::string inFlag)
 {
-    m_flags[inFlagName] = inFlag;
+    std::string flagName;
+    //Strip the --
+    if (inFlagName.starts_with("--"))
+        flagName = inFlagName.substr(2, inFlagName.size()-2);
+    else
+        flagName = inFlagName;
+    m_flags[flagName] = inFlag;
 }
 
 /**
@@ -92,7 +98,11 @@ std::string DDParameters::validateFlags()
 {
     std::string validationErrors = "";
     for (const auto& flag : m_flags)
-        validationErrors = DDOperation::ValidateFlag(getOperation(), flag.first, flag.second) + "\n";
+    {
+        std::string validationError = DDOperation::ValidateFlag(getOperation(), flag.first, flag.second);
+        if (!validationError.empty())
+            validationErrors = validationError + "\n";
+    }
     return validationErrors;
 }
 
