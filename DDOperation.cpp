@@ -14,6 +14,8 @@ DDOperation::DDOperation(DDManifest &inManifest) : m_manifest(inManifest)
 {
     m_processedSize = 0;
     m_processedCount = 0;
+    m_targetSize = 0;
+    m_targetCount = 0;
 
     //Generate the file prefix that is used to generating new files
     m_filePrefix = "DummyDir_v1";
@@ -72,6 +74,8 @@ void DDOperation::DoOperation(DDParameters &parameters)
     //Reset the counts
     m_processedSize = 0;
     m_processedCount = 0;
+    m_targetSize = 0;
+    m_targetCount = 0;
 
     //Reseed the random number generator
     //The parameter contains the seed value stored as a hex string
@@ -85,7 +89,19 @@ void DDOperation::DoOperation(DDParameters &parameters)
 
     //Wait for the thread pool to complete
     if (m_threadPool)
-        m_threadPool->wait();
+        while(!m_threadPool->wait_for(std::chrono::milliseconds(500)))
+        {
+            //Still processing, issue the callback
+            if (m_statusCallbackFunction)
+            {
+                double percentage = 1;
+                if (m_targetSize > 0)
+                    percentage = static_cast<double>(m_processedSize)/m_targetSize;
+                else if (m_targetCount > 0)
+                    percentage = static_cast<double>(m_processedCount)/m_targetCount;
+                m_statusCallbackFunction(percentage);
+            }
+        }
 
     //Stop the timer
     m_endProcessing = std::chrono::steady_clock::now();

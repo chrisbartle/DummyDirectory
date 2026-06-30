@@ -24,18 +24,18 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
 {
     //We need to determine our target point. It may either be size (the total number of bytes to be processed)
     //or count (the total number of objects to be created
-    uint64_t targetSize = 0;
+    m_targetSize = 0;
     uint64_t targetCount = 0;
     if (parameters.isFlag("size"))
-        targetSize = m_rng.processFlag(parameters.getFlag("size"), m_manifest.getTotalSize());
+        m_targetSize = m_rng.processFlag(parameters.getFlag("size"), m_manifest.getTotalSize());
     if (parameters.isFlag("count"))
-        targetCount = m_rng.processFlag(parameters.getFlag("count"), m_manifest.getTotalFileCount());
+        m_targetCount = m_rng.processFlag(parameters.getFlag("count"), m_manifest.getTotalFileCount());
 
     uint64_t sizeSoFar = 0;
     uint64_t countSoFar = 0;
     //Loop until either the target size or target count is reached
-    while ((parameters.isFlag("size") && (sizeSoFar < targetSize))
-           || (parameters.isFlag("count") && (countSoFar < targetCount)))
+    while ((parameters.isFlag("size") && (sizeSoFar < m_targetSize))
+           || (parameters.isFlag("count") && (countSoFar < m_targetCount)))
     {
         //Is this going to be binary or text? Binary files end in .bin and text files end in .txt
         std::string fileExtension;
@@ -65,8 +65,8 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
         if (parameters.isFlag("size"))
         {
             //If the file is too big to fit inside the target total, decrease it
-            if (fileSize + sizeSoFar > targetSize)
-                fileSize = targetSize - sizeSoFar;
+            if (fileSize + sizeSoFar > m_targetSize)
+                fileSize = m_targetSize - sizeSoFar;
             //Files must be at least 15 bytes in size in order to hold the header information
             if (fileSize < 15)
                 fileSize = 15;

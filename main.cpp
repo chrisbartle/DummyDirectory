@@ -10,6 +10,11 @@
 
 using namespace std;
 
+void statusCallback(double inPercentage)
+{
+    cout << "\r" << inPercentage*100 << "%" << std::flush;
+}
+
 int main(int argc, char *argv[])
 {
     //We'll do everything, and I mean EVERYTHING, inside this try/catch
@@ -81,9 +86,11 @@ int main(int argc, char *argv[])
         //Perform the operation
         unique_ptr<DDOperation> operation = DDOperation::getOperationByName(mainParameters.getOperation(), manifest);
         operation->SetDefaultParameters(mainParameters);
+        operation->setStatusCallbackFunction(statusCallback);
         cout << "Processing..." << endl;
         operation->DoOperation(mainParameters);
-        cout << operation->GetOperationSummation() << endl;
+        //Use a carriage return to clear the percentage indicator
+        cout << "\r" << operation->GetOperationSummation() << endl;
 
         //Look for errors
         for (int eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)

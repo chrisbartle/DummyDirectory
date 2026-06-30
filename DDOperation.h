@@ -20,6 +20,7 @@ public:
     void SetDefaultParameters(DDParameters &parameters);
     void DoOperation(DDParameters &parameters);
     virtual std::string GetOperationSummation();
+    void setStatusCallbackFunction(std::function<void(double)> inFunction) { m_statusCallbackFunction = inFunction; }
 
     static std::string ValidateOperationType(std::string inOperation);
     static std::string ValidateFlag(std::string inOperation, std::string inFlag, std::string inFlagValue);
@@ -34,8 +35,11 @@ protected:
     DDManifest &m_manifest;
     std::string m_filePrefix;
 
+    std::function<void(double)> m_statusCallbackFunction;
     std::atomic_uint64_t m_processedSize;
     std::atomic_uint64_t m_processedCount;
+    std::atomic_uint64_t m_targetSize;
+    std::atomic_uint64_t m_targetCount;
     std::chrono::steady_clock::time_point m_startProcessing;
     std::chrono::steady_clock::time_point m_endProcessing;
 
