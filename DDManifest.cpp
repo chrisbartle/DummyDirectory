@@ -130,3 +130,11 @@ void DDManifest::PostOperationCleanup()
     }
     m_totalSize = totalFileSize;
 }
+
+string DDManifest::GetManifestSummation()
+{
+    string summation;
+    summation = std::format(std::locale(""), "Manifest contains {:L} directories and {:L} files.\n{:L} bytes total.",
+                            getTotalDirectoryCount(), getTotalFileCount(), getTotalSize());
+    return summation;
+}

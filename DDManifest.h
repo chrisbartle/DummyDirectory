@@ -17,6 +17,7 @@ public:
     bool LoadFromFile();
     void SaveToFile();
     void PostOperationCleanup();
+    std::string GetManifestSummation();
 
     uint64_t getTotalSize() { return m_totalSize; };
     uint64_t getTotalFileCount() { return m_files.size(); };

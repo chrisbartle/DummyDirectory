@@ -142,6 +142,7 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         outFile.write(prefix.data(), prefix.length());
         hasher.update(prefix.data(), prefix.length());
         writtenSoFar += prefix.length();
+        m_processedSize += prefix.length();
 
         if (isText)
         {
@@ -159,6 +160,7 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
                 outFile.write(textBuffer.data(), bufferSize);
                 hasher.update(textBuffer.data(), bufferSize);
                 writtenSoFar += bufferSize;
+                m_processedSize += bufferSize;
             }
         }
         else
@@ -174,6 +176,7 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
                 outFile.write(reinterpret_cast<const char*>(buffer.data()), bufferSize);
                 hasher.update(reinterpret_cast<const char*>(buffer.data()), bufferSize);
                 writtenSoFar += bufferSize;
+                m_processedSize += bufferSize;
             }
         }
 
@@ -181,6 +184,7 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         //Update the file stats
         file.setSize(size);
         file.setHash(hasher.finalize());
+        m_processedCount++;
     }
     catch (const std::exception& e) {
         file.recordProcessingError("Exception thrown when processing file " + absolutePathname.string() + ": " + e.what());

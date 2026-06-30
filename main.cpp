@@ -76,14 +76,14 @@ int main(int argc, char *argv[])
         DDManifest manifest;
         manifest.SetFilepath(absoluteManifestPath);
         manifest.LoadFromFile();
-        cout << "Manifest contains " << to_string(manifest.getTotalDirectoryCount()) << " directories and " << to_string(manifest.getTotalFileCount()) << " files" << endl;
-        cout << to_string(manifest.getTotalSize()) << " bytes total" << endl;
+        cout << manifest.GetManifestSummation() << endl;
 
         //Perform the operation
-        unique_ptr<DDOperation> operation = DDOperation::getOperation(mainParameters.getOperation(), manifest);
+        unique_ptr<DDOperation> operation = DDOperation::getOperationByName(mainParameters.getOperation(), manifest);
         operation->SetDefaultParameters(mainParameters);
         cout << "Processing..." << endl;
         operation->DoOperation(mainParameters);
+        cout << operation->GetOperationSummation() << endl;
 
         //Look for errors
         for (int eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
@@ -95,8 +95,7 @@ int main(int argc, char *argv[])
         manifest.PostOperationCleanup();
 
         cout << "Processing complete!" << endl;
-        cout << "Directory contains " << to_string(manifest.getTotalDirectoryCount()) << " directories and " << to_string(manifest.getTotalFileCount()) << " files" << endl;
-        cout << to_string(manifest.getTotalSize()) << " bytes total" << endl;
+        cout << manifest.GetManifestSummation() << endl;
 
         //Save the new manifest
         manifest.SaveToFile();

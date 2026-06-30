@@ -5,6 +5,8 @@
 #include "DDOperationAdd.h"
 
 #include <random>
+#include <format>
+#include <locale>
 
 using namespace std;
 
@@ -17,8 +19,15 @@ DDOperation::DDOperation(DDManifest &inManifest) : m_manifest(inManifest)
     m_filePrefix = "DummyDir_v1";
 }
 
-
-std::unique_ptr<DDOperation> DDOperation::getOperation(std::string inOperation, DDManifest &inManifest)
+/**
+ * @brief DDOperation::getOperationByName
+ * When passed the name of the operation, returns an appropriate operation object. For example, "add"
+ * returns DDOperationAdd.
+ * @param inOperation The name of the operation as passed by parameter
+ * @param inManifest The manifest file
+ * @return The appropriate DDOperation child object
+ */
+std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOperation, DDManifest &inManifest)
 {
     if (inOperation == "add")
         return std::make_unique<DDOperationAdd>(inManifest);
@@ -68,12 +77,28 @@ void DDOperation::DoOperation(DDParameters &parameters)
     //The parameter contains the seed value stored as a hex string
     m_rng.Seed(stoull(parameters.getFlag("seed"), nullptr, 16));
 
+    //Set the timer
+    m_startProcessing = std::chrono::steady_clock::now();
+
     //Have the child class do the actual operation
     ChildDoOperation(parameters);
 
     //Wait for the thread pool to complete
     if (m_threadPool)
         m_threadPool->wait();
+
+    //Stop the timer
+    m_endProcessing = std::chrono::steady_clock::now();
+}
+
+string DDOperation::GetOperationSummation()
+{
+    string summation;
+    double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(m_endProcessing - m_startProcessing).count();
+    double writeSpeed = (elapsedSeconds > 0) ? (m_processedSize / elapsedSeconds) : 0.0;
+    summation = std::format(std::locale(""), "{:L} items processed. {:L} bytes written in {:.6Lf} seconds ({:.2Lf} bytes per second)",
+                            m_processedCount.load(), m_processedSize.load(), elapsedSeconds, writeSpeed);
+    return summation;
 }
 
 void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64_t seed, uint64_t size)

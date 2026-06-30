@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <memory>
+#include <chrono>
 
 #include "DDManifest.h"
 #include "DDParameters.h"
@@ -15,9 +16,10 @@ public:
     const int BUFFER_SIZE = 1000;
 
     DDOperation(DDManifest &inManifest);
-    static std::unique_ptr<DDOperation> getOperation(std::string inOperation, DDManifest &inManifest);
+    static std::unique_ptr<DDOperation> getOperationByName(std::string inOperation, DDManifest &inManifest);
     void SetDefaultParameters(DDParameters &parameters);
     void DoOperation(DDParameters &parameters);
+    virtual std::string GetOperationSummation();
 
     static std::string ValidateOperationType(std::string inOperation);
     static std::string ValidateFlag(std::string inOperation, std::string inFlag, std::string inFlagValue);
@@ -34,6 +36,8 @@ protected:
 
     std::atomic_uint64_t m_processedSize;
     std::atomic_uint64_t m_processedCount;
+    std::chrono::steady_clock::time_point m_startProcessing;
+    std::chrono::steady_clock::time_point m_endProcessing;
 
     DDDeterministicPCGPRNG m_rng;
     std::unique_ptr<BS::light_thread_pool> m_threadPool = NULL;
