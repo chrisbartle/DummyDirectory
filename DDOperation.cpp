@@ -14,7 +14,7 @@ DDOperation::DDOperation(DDManifest &inManifest) : m_manifest(inManifest)
     m_processedCount = 0;
 
     //Generate the file prefix that is used to generating new files
-    m_filePrefix = DDFile::getApplicationIDString();
+    m_filePrefix = "DummyDir_v1";
 }
 
 
@@ -195,10 +195,10 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
 
     if (inFlag == "filetype")
     {
-        if ((inFlagValue != "random") || (inFlagValue != "binary") && (inFlagValue != "text"))
-            return "file_type must be set to random, binary, or text";
+        if ((inFlagValue != "random") && (inFlagValue != "binary") && (inFlagValue != "text"))
+            return "filetype must be set to random, binary, or text";
         if (inOperation != "add")
-            return "file_type can only be set for add operations";
+            return "filetype can only be set for add operations";
         return "";
     }
 

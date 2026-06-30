@@ -61,12 +61,16 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
         file.setRelativePathname(directory.relativePath() / filename);
         //Come up with the file's size
         uint64_t fileSize = m_rng.processFlag(parameters.getFlag("filesize"), m_manifest.getTotalSize());
-        //If the file is too big to fit inside the target total, decrease it
-        if (fileSize + sizeSoFar > targetSize)
-            fileSize = targetSize - sizeSoFar;
-        //Files must be at least 15 bytes in size in order to hold the header information
-        if (fileSize < 15)
-            fileSize = 15;
+        //See if there's a total size limit to enforce here
+        if (parameters.isFlag("size"))
+        {
+            //If the file is too big to fit inside the target total, decrease it
+            if (fileSize + sizeSoFar > targetSize)
+                fileSize = targetSize - sizeSoFar;
+            //Files must be at least 15 bytes in size in order to hold the header information
+            if (fileSize < 15)
+                fileSize = 15;
+        }
         file.setProcessingStatus(DDFile::QUEUED);
 
         DoFileOperation(file, parameters, m_rng.get64(), fileSize);
@@ -117,52 +121,62 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         vector<string> textDictionary;
         if (isText)
         {
-            int dictionarySize = rng.getFromRange(20, 1000);
+            int dictionarySize = rng.getFromRange(20, 100);
             textDictionary.reserve(dictionarySize);
             for(int rut = 0; (rut < dictionarySize); rut++)
                 textDictionary.push_back(rng.getSimpleString(rng.getFromRange(1, 20)));
+            //Put in the occasional carriage return
+            textDictionary.push_back("\n");
         }
 
         uint64_t writtenSoFar = 0;
         DDMD5Hasher hasher;
-        while (writtenSoFar < size)
-        {
-            //A new file always starts with the prefix
-            if (writtenSoFar == 0)
-            {
-                string prefix = m_filePrefix;
-                //Binary files follow with a null, text files with a space
-                if (isText)
-                    m_filePrefix += ' ';
-                else
-                    m_filePrefix += '\0';
-                outFile.write(prefix.data(), prefix.length());
-                writtenSoFar += prefix.length();
-                hasher.update(prefix.data(), prefix.length());
-                continue;
-            }
 
-            uint64_t bufferSize = BUFFER_SIZE;
-            if (writtenSoFar + bufferSize > size)
-                bufferSize = size-writtenSoFar;
-            vector<uint8_t> buffer(bufferSize);
-            if (isText)
+        //A new file always starts with the prefix
+        string prefix = m_filePrefix;
+        //Binary files follow with a null, text files with a space
+        if (isText)
+            prefix += ' ';
+        else
+            prefix += '\0';
+        outFile.write(prefix.data(), prefix.length());
+        hasher.update(prefix.data(), prefix.length());
+        writtenSoFar += prefix.length();
+
+        if (isText)
+        {
+            //Text file. Write out words from the dictionary until the exact size is reached
+            string textBuffer;
+            textBuffer.reserve(BUFFER_SIZE);
+            while (writtenSoFar < size)
             {
-                string textBuffer;
-                textBuffer.resize(bufferSize);
+                textBuffer.clear();
+                uint64_t bufferSize = BUFFER_SIZE;
+                if (writtenSoFar + bufferSize > size)
+                    bufferSize = size-writtenSoFar;
                 while (textBuffer.length() < bufferSize)
-                    textBuffer += textDictionary[rng.getFromRange(0, textDictionary.size())] + " ";
+                    textBuffer += textDictionary[rng.getFromRange(0, textDictionary.size()-1)] + " ";
                 outFile.write(textBuffer.data(), bufferSize);
                 hasher.update(textBuffer.data(), bufferSize);
+                writtenSoFar += bufferSize;
             }
-            else
-            {
-                buffer = rng.getBytes(bufferSize);
-                outFile.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-                hasher.update(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-            }
-            writtenSoFar += bufferSize;
         }
+        else
+        {
+            //Binary file. Write random bytes out until the exact size is reached.
+            vector<uint8_t> buffer(BUFFER_SIZE);
+            while (writtenSoFar < size)
+            {
+                uint64_t bufferSize = BUFFER_SIZE;
+                if (writtenSoFar + bufferSize > size)
+                    bufferSize = size-writtenSoFar;
+                buffer = rng.getBytes(bufferSize);
+                outFile.write(reinterpret_cast<const char*>(buffer.data()), bufferSize);
+                hasher.update(reinterpret_cast<const char*>(buffer.data()), bufferSize);
+                writtenSoFar += bufferSize;
+            }
+        }
+
         outFile.close();
         //Update the file stats
         file.setSize(size);
