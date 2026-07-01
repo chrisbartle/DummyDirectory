@@ -3,6 +3,7 @@
 #include "BS_thread_pool.hpp"
 
 #include "DDOperationAdd.h"
+#include "DDOperationAddDirectory.h"
 
 #include <random>
 #include <format>
@@ -33,6 +34,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
 {
     if (inOperation == "add")
         return std::make_unique<DDOperationAdd>(inManifest);
+    else if (inOperation == "dadd")
+        return std::make_unique<DDOperationAddDirectory>(inManifest);
     throw runtime_error("Unknown operation " + inOperation);
 }
 
@@ -92,15 +95,7 @@ void DDOperation::DoOperation(DDParameters &parameters)
         while(!m_threadPool->wait_for(std::chrono::milliseconds(500)))
         {
             //Still processing, issue the callback
-            if (m_statusCallbackFunction)
-            {
-                double percentage = 1;
-                if (m_targetSize > 0)
-                    percentage = static_cast<double>(m_processedSize)/m_targetSize;
-                else if (m_targetCount > 0)
-                    percentage = static_cast<double>(m_processedCount)/m_targetCount;
-                m_statusCallbackFunction(percentage);
-            }
+            UpdateProcessingStatus();
         }
 
     //Stop the timer
@@ -146,6 +141,24 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
 }
 
 /**
+ * @brief DDOperation::UpdateProcessingStatus
+ * Calls the callback function and provides information on the percentage completed
+ */
+void DDOperation::UpdateProcessingStatus()
+{
+    //If there is a callback function, calculate the percentage and call it
+    if (m_statusCallbackFunction)
+    {
+        double percentage = 1;
+        if (m_targetSize > 0)
+            percentage = static_cast<double>(m_processedSize)/m_targetSize;
+        else if (m_targetCount > 0)
+            percentage = static_cast<double>(m_processedCount)/m_targetCount;
+        m_statusCallbackFunction(percentage);
+    }
+}
+
+/**
  * @brief DDOperation::ValidateOperationType
  * Given the name of an operation (add, delete, modify, etc), confirms that it is a valid
  * and recognizable type.
@@ -159,10 +172,10 @@ std::string DDOperation::ValidateOperationType(std::string inOperation)
             || (inOperation == "modify")            //modify files
             || (inOperation == "rename")            //rename files
             || (inOperation == "move")              //move files to a different directory
-            || (inOperation == "add_directory")     //add directories
-            || (inOperation == "rename_directory")  //rename directories
-            || (inOperation == "move_directory")    //move directories to a different directory
-            || (inOperation == "delete_directory")  //delete directories
+            || (inOperation == "dadd")     //add directories
+            || (inOperation == "drename")  //rename directories
+            || (inOperation == "dmove")    //move directories to a different directory
+            || (inOperation == "ddelete")  //delete directories
             || (inOperation == "clean")             //delete all files and directories
             || (inOperation == "verify")            //confirm that the manifest is correct
             || (inOperation == "rebuild")           //build a new manifest from the contents of this directory
@@ -249,6 +262,22 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
             return "file_type must be set to random, overwrite, block, or append";
         if (inOperation != "modify")
             return "file_type can only be set for modify operations";
+        return "";
+    }
+
+    if (inFlag == "maxdepth")
+    {
+        //Only permitted for directory operations
+        if ((inOperation != "dadd") && (inOperation != "ddelete") && (inOperation != "drename") && (inOperation != "dmove"))
+            return "maxdepth can only be used with directory operations";
+        try
+        {
+            (void)stoul(inFlagValue);
+        }
+        catch(...)
+        {
+            return "maxdepth must be number";
+        }
         return "";
     }
 

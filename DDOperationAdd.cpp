@@ -25,7 +25,7 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
     //We need to determine our target point. It may either be size (the total number of bytes to be processed)
     //or count (the total number of objects to be created
     m_targetSize = 0;
-    uint64_t targetCount = 0;
+    m_targetCount = 0;
     if (parameters.isFlag("size"))
         m_targetSize = m_rng.processFlag(parameters.getFlag("size"), m_manifest.getTotalSize());
     if (parameters.isFlag("count"))
@@ -99,7 +99,7 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         //We don't want to overwrite an existing file
         if (std::filesystem::exists(absolutePathname))
         {
-            file.recordProcessingError("A file already exists at " + absolutePathname.string());
+            file.setProcessingStatus(DDFile::CONFLICT);
             return;
         }
 

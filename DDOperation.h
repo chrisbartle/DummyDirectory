@@ -27,6 +27,7 @@ public:
 
 protected:
     void DoFileOperation(DDFile &file, DDParameters &parameters, uint64_t seed, uint64_t size);
+    void UpdateProcessingStatus();
 
     virtual void ChildSetDefaultParameters(DDParameters &parameters) {};
     virtual void ChildDoOperation(DDParameters &parameters) {};

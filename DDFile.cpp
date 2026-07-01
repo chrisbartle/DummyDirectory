@@ -45,6 +45,8 @@ DDFile::FileProcessingStatus DDFile::processingStatus() const
 void DDFile::setProcessingStatus(FileProcessingStatus newProcessingStatus)
 {
     m_processingStatus = newProcessingStatus;
+    if ((newProcessingStatus != ERROR) && !m_processingError.empty())
+        m_processingError.clear();
 }
 
 

@@ -4,9 +4,11 @@
 #include <atomic>
 #include <filesystem>
 #include <vector>
+#include <limits>
 
 #include "DDDirectory.h"
 #include "DDFile.h"
+#include "DDDeterministicPCGPRNG.h"
 
 class DDManifest
 {
@@ -28,6 +30,7 @@ public:
 //    void removeFileByPos(uint64_t in Pos) { m_files.}
 
     DDDirectory& getDirectoryByPos(uint64_t inPos) { return *(m_directories[inPos]); };
+    DDDirectory& getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint64_t inMaxDepth = std::numeric_limits<uint64_t>::max());
     DDDirectory& addDirectory() { m_directories.emplace_back(std::make_unique<DDDirectory>()); return *(m_directories.back()); };
 
 private:

@@ -1,6 +1,7 @@
 #include "DDManifest.h"
 #include <fstream>
 #include <iostream>
+#include <numeric>
 
 #include "cmake_vals.h"
 
@@ -120,6 +121,14 @@ void DDManifest::SaveToFile()
  */
 void DDManifest::PostOperationCleanup()
 {
+    //Clean up the directory errors
+    for (const auto& directory : m_directories)
+    {
+        if (directory->processingStatus() != DDDirectory::NONE)
+            directory->setProcessingStatus(DDDirectory::NONE);
+        directory->recordProcessingError("");
+    }
+
     uint64_t totalFileSize = 0;
     //Iterate through the files
     for (const auto& file : m_files)
@@ -129,6 +138,42 @@ void DDManifest::PostOperationCleanup()
         totalFileSize += file->size();
     }
     m_totalSize = totalFileSize;
+}
+
+DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint64_t inMaxDepth)
+{
+    //If the max depth is 0 then the only answer is the root directory
+    if (inMaxDepth == 0)
+        return *(m_directories[0]);
+
+    uint64_t size = m_directories.size();
+    uint64_t dirPos = inRNG.getFromRange(0, size-1);
+    if (m_directories[dirPos]->getRelativePathDepth() <= inMaxDepth)
+        return *(m_directories[dirPos]);
+
+    //This directory is invalid because it's too deep. We'll need to iterate through
+    //the list until we find one that isn't too deep. We'll calculate a stride value
+    //which will let us move through the list in somewhat random order while guaranteeing that
+    //we eventually hit every directory (including the root).
+    uint64_t stride = inRNG.getFromRange(1, size-1);
+    //The stride must not have a common denominator compared to the size of the list
+    while (std::gcd(stride, size) != 1) {
+        stride = inRNG.getFromRange(1, size-1);
+    }
+    //Now we can loop through the list and expect to hit every item
+    for (size_t i = 0; i < size; ++i) {
+        // Jump forward by the stride and wrap around using modulo
+        dirPos = (dirPos + stride) % size;
+        //We are only picking directories that don't have a strange processing status and are within
+        //the desired depth
+        if ((m_directories[dirPos]->processingStatus() == DDDirectory::NONE)
+                && (m_directories[dirPos]->getRelativePathDepth() <= inMaxDepth))
+            return *(m_directories[dirPos]);
+    }
+
+    //The above should have worked but if it didn't just return the root directory which
+    //is always the first one on the vector.
+    return *(m_directories[0]);
 }
 
 string DDManifest::GetManifestSummation()
