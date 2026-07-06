@@ -93,19 +93,89 @@ int main(int argc, char *argv[])
         cout << "\r" << operation->GetOperationSummation() << endl;
 
         //Look for errors
-        for (int eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
+        if (mainParameters.getOperation() == "verify")
         {
-            DDFile& thisFile = manifest.getFileByPos(eloop);
-            if (thisFile.processingStatus() == DDFile::ERROR)
-                cout << thisFile.getProcessingError() << endl;
+            //Verification has custom output
+            uint64_t missingCount = 0;
+            uint64_t differentCount = 0;
+            uint64_t errorCount = 0;
+            for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
+            {
+                DDFile& thisFile = manifest.getFileByPos(eloop);
+                if (thisFile.processingStatus() == DDFile::ERROR)
+                {
+                    errorCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
+                }
+                else if (thisFile.processingStatus() == DDFile::MISSING)
+                {
+                    missingCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisFile.relativePathname().string() << " is missing!" << endl;
+                }
+                else if (thisFile.processingStatus() == DDFile::DIFFERENT)
+                {
+                    differentCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisFile.relativePathname().string() << " has a different hash!" << endl;
+                }
+            }
+            if ((missingCount == 0) && (differentCount == 0) && (errorCount == 0))
+                cout << "All files were successfully validated!" << endl;
+            else
+            {
+                if (missingCount > 0)
+                    cout << missingCount << " files listed on the manifest are missing from the file system" << endl;
+                if (differentCount > 0)
+                    cout << differentCount << " files have a different hash" << endl;
+                if (errorCount > 0)
+                    cout << errorCount << " files could not be processed due to an error" << endl;
+                if (!mainParameters.isFlag("verbose"))
+                    cout << "Re-run verify with --verbose flag to get a list of specific files" << endl;
+            }
+        }
+        else
+        {
+            //With other operations, we only care about errors and conflicts
+            uint64_t errorCount = 0;
+            uint64_t conflictCount = 0;
+            for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
+            {
+                DDFile& thisFile = manifest.getFileByPos(eloop);
+                if (thisFile.processingStatus() == DDFile::ERROR)
+                {
+                    errorCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
+                }
+                else if (thisFile.processingStatus() == DDFile::CONFLICT)
+                {
+                    conflictCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisFile.relativePathname().string() << " could not be added due to an existing file with the same name" << endl;
+                }
+            }
+            if ((errorCount > 0) || (conflictCount > 0))
+            {
+                if (conflictCount > 0)
+                    cout << conflictCount << " files could not be added because the file already existed" << endl;
+                if (errorCount > 0)
+                    cout << errorCount << " files could not be processed due to an error" << endl;
+                if (!mainParameters.isFlag("verbose"))
+                    cout << "Re-run with --verbose flag to get a list of specific files" << endl;
+            }
         }
         manifest.PostOperationCleanup();
 
-        cout << "Processing complete!" << endl;
-        cout << manifest.GetManifestSummation() << endl;
+        if (mainParameters.getOperation() != "verify")
+        {
+            cout << "Processing complete!" << endl;
+            cout << manifest.GetManifestSummation() << endl;
 
-        //Save the new manifest
-        manifest.SaveToFile();
+            //Save the new manifest
+            manifest.SaveToFile();
+        }
     }
     catch (const std::exception& e) {
         std::cerr << "Critical Error (std::exception): " << e.what() << std::endl;

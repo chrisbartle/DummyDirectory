@@ -4,6 +4,7 @@
 
 #include "DDOperationAdd.h"
 #include "DDOperationAddDirectory.h"
+#include "DDOperationVerify.h"
 
 #include <random>
 #include <format>
@@ -36,6 +37,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationAdd>(inManifest);
     else if (inOperation == "dadd")
         return std::make_unique<DDOperationAddDirectory>(inManifest);
+    else if (inOperation == "verify")
+        return std::make_unique<DDOperationVerify>(inManifest);
     throw runtime_error("Unknown operation " + inOperation);
 }
 

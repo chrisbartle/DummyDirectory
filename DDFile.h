@@ -22,7 +22,7 @@ public:
 //    enum FileExistanceStatus { NOEXIST, EXISTS, NOTDD };
 //    FileExistanceStatus existsOnFilesystem();
 
-    enum FileProcessingStatus { NONE, QUEUED, STARTED, COMPLETE, ERROR, DELETED, CONFLICT };
+    enum FileProcessingStatus { NONE, QUEUED, STARTED, COMPLETE, ERROR, DELETED, CONFLICT, MISSING, DIFFERENT };
     FileProcessingStatus processingStatus() const;
     void setProcessingStatus(FileProcessingStatus newProcessingStatus);
     void recordProcessingError(std::string inError) {m_processingStatus = ERROR; m_processingError = inError; };

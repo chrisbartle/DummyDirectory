@@ -13,7 +13,7 @@
 class DDOperation
 {
 public:
-    const int BUFFER_SIZE = 1000;
+    static constexpr size_t BUFFER_SIZE = 4096;
 
     DDOperation(DDManifest &inManifest);
     static std::unique_ptr<DDOperation> getOperationByName(std::string inOperation, DDManifest &inManifest);

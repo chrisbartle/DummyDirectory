@@ -93,7 +93,6 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
     file.setProcessingStatus(DDFile::STARTED);
     try
     {
-        string operation = parameters.getOperation();
         DDDeterministicPCGPRNG rng(seed);
 
         //We don't want to overwrite an existing file
