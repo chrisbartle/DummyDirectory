@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <numeric>
+#include <algorithm>
 
 #include "cmake_vals.h"
 
@@ -84,6 +85,14 @@ bool DDManifest::LoadFromFile()
 
 void DDManifest::SaveToFile()
 {
+    //Sort the vectors. We do this to guarantee that every manifest file is identical
+    sort(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
+        return a->relativePath() < b->relativePath();
+    });
+    sort(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
+        return a->relativePathname() < b->relativePathname();
+    });
+
     //Open a stream and start writing
     std::ofstream manifestFile(m_absoluteManifestPath, std::ios::trunc);
     if (!manifestFile.is_open())
@@ -103,15 +112,15 @@ void DDManifest::SaveToFile()
         if (directory->relativePath() == "")
             continue;
         //Encase the directory name in quotes
-        manifestFile << std::quoted(directory->relativePath().string()) << " directory" << endl;
+        manifestFile << std::quoted(directory->relativePath().generic_string()) << " directory\n";  //Avoiding endl for performance
     }
 
     //Finally we write out the list of all files
     for (const auto& file : m_files)
     {
-        manifestFile << std::quoted(file->relativePathname().string()) << " " << to_string(file->size()) << " " << file->hash() << endl;
+        manifestFile << std::quoted(file->relativePathname().generic_string()) << " " << to_string(file->size()) << " " << file->hash() << "\n";    //Avoiding endl for performance
     }
-
+    manifestFile.close();
 }
 
 /**
