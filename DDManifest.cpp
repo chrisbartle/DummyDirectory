@@ -175,7 +175,7 @@ DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint6
         return *(m_directories[dirPos]);
 
     //This directory is invalid because it's too deep. We'll need to iterate through
-    //the list until we find one that isn't too deep. We'll calculate a stride value
+    //the list until we find one that isn't too deep. We'll use the coprime stride method
     //which will let us move through the list in somewhat random order while guaranteeing that
     //we eventually hit every directory (including the root).
     uint64_t stride = inRNG.getFromRange(1, size-1);
