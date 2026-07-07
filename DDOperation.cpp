@@ -5,6 +5,7 @@
 #include "DDOperationAdd.h"
 #include "DDOperationAddDirectory.h"
 #include "DDOperationVerify.h"
+#include "DDOperationClean.h"
 
 #include <random>
 #include <format>
@@ -39,6 +40,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationAddDirectory>(inManifest);
     else if (inOperation == "verify")
         return std::make_unique<DDOperationVerify>(inManifest);
+    else if (inOperation == "clean")
+        return std::make_unique<DDOperationClean>(inManifest);
     throw runtime_error("Unknown operation " + inOperation);
 }
 
@@ -94,12 +97,7 @@ void DDOperation::DoOperation(DDParameters &parameters)
     ChildDoOperation(parameters);
 
     //Wait for the thread pool to complete
-    if (m_threadPool)
-        while(!m_threadPool->wait_for(std::chrono::milliseconds(500)))
-        {
-            //Still processing, issue the callback
-            UpdateProcessingStatus();
-        }
+    WaitForThreadsToComplete();
 
     //Stop the timer
     m_endProcessing = std::chrono::steady_clock::now();
@@ -141,6 +139,16 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
         {
             ChildDoFileOperation(file, parameters, seed, size);
         });
+}
+
+void DDOperation::WaitForThreadsToComplete()
+{
+    if (m_threadPool)
+        while(!m_threadPool->wait_for(std::chrono::milliseconds(500)))
+        {
+            //Still processing, issue the callback
+            UpdateProcessingStatus();
+        }
 }
 
 /**

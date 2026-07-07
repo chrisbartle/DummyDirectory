@@ -85,6 +85,14 @@ bool DDManifest::LoadFromFile()
 
 void DDManifest::SaveToFile()
 {
+    //If there are no directories or files then not only do we not want to write out a file but
+    //we want to delete any prior manifest file.
+    if ((m_directories.size() <= 1) && (m_files.size() == 0) && std::filesystem::exists(m_absoluteManifestPath))
+    {
+        std::filesystem::remove(m_absoluteManifestPath);
+        return;
+    }
+
     //Sort the vectors. We do this to guarantee that every manifest file is identical
     sort(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
         return a->relativePath() < b->relativePath();
@@ -130,6 +138,9 @@ void DDManifest::SaveToFile()
  */
 void DDManifest::PostOperationCleanup()
 {
+    //Remove deleted directories
+    erase_if(m_directories, [](const unique_ptr<DDDirectory>& d) { return d->processingStatus() == DDDirectory::DELETED; });
+
     //Clean up the directory errors
     for (const auto& directory : m_directories)
     {
@@ -137,6 +148,9 @@ void DDManifest::PostOperationCleanup()
             directory->setProcessingStatus(DDDirectory::NONE);
         directory->recordProcessingError("");
     }
+
+    //Remove deleted files
+    erase_if(m_files, [](const unique_ptr<DDFile>& d) { return d->processingStatus() == DDFile::DELETED; });
 
     uint64_t totalFileSize = 0;
     //Iterate through the files

@@ -12,7 +12,7 @@ using namespace std;
 
 void statusCallback(double inPercentage)
 {
-    cout << "\r" << inPercentage*100 << "%" << std::flush;
+    cout << "\r" << inPercentage*100 << "%          " << std::flush;
 }
 
 int main(int argc, char *argv[])
@@ -170,8 +170,15 @@ int main(int argc, char *argv[])
 
         if (mainParameters.getOperation() != "verify")
         {
-            cout << "Processing complete!" << endl;
-            cout << manifest.GetManifestSummation() << endl;
+            if (mainParameters.getOperation() == "clean")
+            {
+                cout << "Cleaning complete!" << endl;
+            }
+            else
+            {
+                cout << "Processing complete!" << endl;
+                cout << manifest.GetManifestSummation() << endl;
+            }
 
             //Save the new manifest
             manifest.SaveToFile();
