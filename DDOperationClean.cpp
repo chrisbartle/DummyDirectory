@@ -21,16 +21,22 @@ void DDOperationClean::ChildDoOperation(DDParameters &parameters)
     //remove all directories and files that match the DD_* pattern
     //vector<DDFile> fileQueue;
     vector<filesystem::path> directoriesToDeleteLater;
-    for (const filesystem::directory_entry& entry : filesystem::recursive_directory_iterator(parameters.getAbsoluteDirectoryPath()))
+    for (auto it = filesystem::recursive_directory_iterator(parameters.getAbsoluteDirectoryPath()); it != filesystem::recursive_directory_iterator(); ++it)
     {
+        const auto& entry = *it;
         //Delete any files that start with DD_
         if (filesystem::is_regular_file(entry.path()) && entry.path().filename().string().starts_with("DD_"))
         {
             filesystem::remove(entry.path());
             m_processedCount++;
         }
-        else if (filesystem::is_directory(entry.path()) && entry.path().filename().string().starts_with("DD_"))
-            directoriesToDeleteLater.push_back(entry.path());
+        else if (filesystem::is_directory(entry.path()))
+        {
+            if (entry.path().filename().string().starts_with("DD_"))
+                directoriesToDeleteLater.push_back(entry.path());
+            else
+                it.disable_recursion_pending();
+        }
     }
     //Iterate backwards through all of the directories we found and remove them one by one
     for (auto it = directoriesToDeleteLater.rbegin(); it != directoriesToDeleteLater.rend(); ++it)

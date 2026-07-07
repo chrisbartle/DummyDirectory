@@ -80,8 +80,11 @@ int main(int argc, char *argv[])
         std::filesystem::path absoluteManifestPath = absoluteDirectoryPath / "DummyDir.manifest";
         DDManifest manifest;
         manifest.SetFilepath(absoluteManifestPath);
-        manifest.LoadFromFile();
-        cout << manifest.GetManifestSummation() << endl;
+        if (mainParameters.getOperation() != "rebuild")
+        {
+            manifest.LoadFromFile();
+            cout << manifest.GetManifestSummation() << endl;
+        }
 
         //Perform the operation
         unique_ptr<DDOperation> operation = DDOperation::getOperationByName(mainParameters.getOperation(), manifest);

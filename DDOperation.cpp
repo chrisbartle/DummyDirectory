@@ -7,6 +7,7 @@
 #include "DDOperationDelete.h"
 #include "DDOperationVerify.h"
 #include "DDOperationClean.h"
+#include "DDOperationRebuild.h"
 
 #include <random>
 #include <format>
@@ -45,6 +46,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationVerify>(inManifest);
     else if (inOperation == "clean")
         return std::make_unique<DDOperationClean>(inManifest);
+    else if (inOperation == "rebuild")
+        return std::make_unique<DDOperationRebuild>(inManifest);
     throw runtime_error("Unknown operation " + inOperation);
 }
 
