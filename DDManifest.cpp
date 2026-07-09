@@ -3,6 +3,7 @@
 #include <iostream>
 #include <numeric>
 #include <algorithm>
+#include <format>
 
 #include "cmake_vals.h"
 
@@ -202,7 +203,7 @@ DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint6
 string DDManifest::GetManifestSummation()
 {
     string summation;
-    summation = std::format(std::locale(""), "Manifest contains {:L} directories and {:L} files.\n{:L} bytes total.",
+    summation = format(std::locale(""), "Manifest contains {:L} directories and {:L} files.\n{:L} bytes total.",
                             getTotalDirectoryCount(), getTotalFileCount(), getTotalSize());
     return summation;
 }
