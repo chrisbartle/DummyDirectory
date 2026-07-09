@@ -83,6 +83,17 @@ void DDParameters::setFlag(std::string inFlagName, std::string inFlag)
     //Strip the --
     if (inFlagName.starts_with("--"))
         flagName = inFlagName.substr(2, inFlagName.size()-2);
+    else if (inFlagName.starts_with("-"))
+    {
+        //Convert the short flags to long
+        flagName = inFlagName.substr(1, inFlagName.size()-1);
+        if (flagName == "s")
+            flagName = "size";
+        else if (flagName == "c")
+            flagName = "count";
+        else if (flagName == "v")
+            flagName = "verbose";
+    }
     else
         flagName = inFlagName;
     m_flags[flagName] = inFlag;

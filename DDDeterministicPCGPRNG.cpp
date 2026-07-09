@@ -109,6 +109,41 @@ std::string DDDeterministicPCGPRNG::getSimpleString(size_t size)
 }
 
 /**
+ * @brief DDDeterministicPCGPRNG::getText
+ * Returns nonsense text of a given length. This comes from a randomly
+ * generated dictionary. The text should be compressable with LZW.
+ * @param size Size of string to be returned
+ * @return String of text
+ */
+string DDDeterministicPCGPRNG::getText(size_t size)
+{
+    //We need a dictionary of random words
+    //between 20 and 100 words
+    //each word between 1 and 20 characters
+    if (m_textDictionary.size() == 0)
+    {
+        int dictionarySize = getFromRange(20, 100);
+        m_textDictionary.reserve(dictionarySize);
+        for(int rut = 0; (rut < dictionarySize); rut++)
+            m_textDictionary.push_back(getSimpleString(getFromRange(1, 20)));
+        //Put in the occasional carriage return
+        m_textDictionary.push_back("\n");
+    }
+
+    string textBuffer;
+    textBuffer.reserve(size);
+    while (textBuffer.length() < size)
+    {
+        string nextWord = m_textDictionary[getFromRange(0, m_textDictionary.size()-1)] + " ";
+        if (textBuffer.length() + nextWord.length() > size)
+            nextWord.resize(size-textBuffer.length());
+        textBuffer += nextWord;
+    }
+
+    return textBuffer;
+}
+
+/**
  * @brief DDDeterministicPCGPRNG::getFromRange
  * Pick a random number from a range (inclusive) of numbers
  * @param min Lowest possible number

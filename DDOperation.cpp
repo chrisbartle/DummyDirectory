@@ -3,12 +3,14 @@
 #include "BS_thread_pool.hpp"
 
 #include "DDOperationAdd.h"
-#include "DDOperationAddDirectory.h"
+#include "DDOperationModify.h"
 #include "DDOperationDelete.h"
+#include "DDOperationAddDirectory.h"
 #include "DDOperationVerify.h"
 #include "DDOperationClean.h"
 #include "DDOperationRebuild.h"
 
+#include <assert.h>
 #include <random>
 #include <format>
 #include <locale>
@@ -24,6 +26,7 @@ DDOperation::DDOperation(DDManifest &inManifest) : m_manifest(inManifest)
 
     //Generate the file prefix that is used to generating new files
     m_filePrefix = "DummyDir_v1";
+    assert(m_filePrefix.length() <= MINIMUM_FILE_SIZE);
 }
 
 /**
@@ -38,6 +41,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
 {
     if (inOperation == "add")
         return std::make_unique<DDOperationAdd>(inManifest);
+    else if (inOperation == "modify")
+        return std::make_unique<DDOperationModify>(inManifest);
     else if (inOperation == "delete")
         return std::make_unique<DDOperationDelete>(inManifest);
     else if (inOperation == "dadd")
@@ -275,10 +280,16 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
 
     if (inFlag == "modifytype")
     {
-        if ((inFlagValue != "random") || (inFlagValue != "overwrite") && (inFlagValue != "block") && (inFlagValue != "append"))
-            return "file_type must be set to random, overwrite, block, or append";
         if (inOperation != "modify")
             return "file_type can only be set for modify operations";
+        if (inFlagValue == "random")
+            return "";
+        try {
+            //This function will throw an exception if it can't convert the string
+            DDOperationModify::ConvertStringToModifcationType(inFlagValue);
+        } catch (...) {
+            return "file_type must be set to append, truncate, overwrite, chop, or insert";
+        }
         return "";
     }
 

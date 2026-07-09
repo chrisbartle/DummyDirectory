@@ -14,6 +14,7 @@ class DDOperation
 {
 public:
     static constexpr size_t BUFFER_SIZE = 4096;
+    static constexpr size_t MINIMUM_FILE_SIZE = 15;
 
     DDOperation(DDManifest &inManifest);
     static std::unique_ptr<DDOperation> getOperationByName(std::string inOperation, DDManifest &inManifest);

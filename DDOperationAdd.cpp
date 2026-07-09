@@ -68,8 +68,8 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
             if (fileSize + sizeSoFar > m_targetSize)
                 fileSize = m_targetSize - sizeSoFar;
             //Files must be at least 15 bytes in size in order to hold the header information
-            if (fileSize < 15)
-                fileSize = 15;
+            if (fileSize < MINIMUM_FILE_SIZE)
+                fileSize = MINIMUM_FILE_SIZE;
         }
         file.setProcessingStatus(DDFile::QUEUED);
 
@@ -114,20 +114,6 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         //Open filestream
         std::ofstream outFile(absolutePathname, ofstreamFlags);
 
-        //If this is a text file, generate a dictionary of random words
-        //between 20 and 1000 words
-        //each word between 1 and 20 characters
-        vector<string> textDictionary;
-        if (isText)
-        {
-            int dictionarySize = rng.getFromRange(20, 100);
-            textDictionary.reserve(dictionarySize);
-            for(int rut = 0; (rut < dictionarySize); rut++)
-                textDictionary.push_back(rng.getSimpleString(rng.getFromRange(1, 20)));
-            //Put in the occasional carriage return
-            textDictionary.push_back("\n");
-        }
-
         uint64_t writtenSoFar = 0;
         DDMD5Hasher hasher;
 
@@ -145,17 +131,13 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
 
         if (isText)
         {
-            //Text file. Write out words from the dictionary until the exact size is reached
-            string textBuffer;
-            textBuffer.reserve(BUFFER_SIZE);
+            //Text file. Write out randomly generated words until the exact size is reached
             while (writtenSoFar < size)
             {
-                textBuffer.clear();
                 uint64_t bufferSize = BUFFER_SIZE;
                 if (writtenSoFar + bufferSize > size)
                     bufferSize = size-writtenSoFar;
-                while (textBuffer.length() < bufferSize)
-                    textBuffer += textDictionary[rng.getFromRange(0, textDictionary.size()-1)] + " ";
+                string textBuffer = rng.getText(bufferSize);
                 outFile.write(textBuffer.data(), bufferSize);
                 hasher.update(textBuffer.data(), bufferSize);
                 writtenSoFar += bufferSize;

@@ -22,8 +22,9 @@ public:
     void Seed(uint64_t newSeed);
     uint32_t get32();
     uint64_t get64();
-    std::vector<uint8_t> getBytes(size_t size);
-    std::string getSimpleString(size_t size);
+    vector<uint8_t> getBytes(size_t size);
+    string getSimpleString(size_t size);
+    string getText(size_t size);
     uint64_t getFromRange(uint64_t min, uint64_t max);
     uint64_t processFlag(string inFlag, uint64_t inPercentageTotal = 0);
     static uint64_t convertStringToNumber(string inStr, uint64_t inPercentageTotal = 0);
@@ -32,6 +33,7 @@ private:
     uint64_t       m_state      = 0;
     uint64_t const m_multiplier = 6364136223846793005u;
     uint64_t const m_increment  = 1442695040888963407u;	// Or an arbitrary odd constant
+    vector<string> m_textDictionary;
 };
 
 #endif // DDDETERMINISTICPCGPRNG_H

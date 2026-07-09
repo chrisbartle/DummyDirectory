@@ -2,7 +2,6 @@
 
 #include <numeric>
 
-
 void DDOperationDelete::ChildSetDefaultParameters(DDParameters &parameters)
 {
     //Either the size or the count must be filled in
