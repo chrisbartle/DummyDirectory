@@ -14,6 +14,10 @@ void DDOperationDelete::ChildSetDefaultParameters(DDParameters &parameters)
 
 void DDOperationDelete::ChildDoOperation(DDParameters &parameters)
 {
+    uint64_t totalFileCount = m_manifest.getTotalFileCount();
+    if (totalFileCount == 0)
+        return;
+
     //We need to determine our target point. It may either be size (the total number of bytes to be delete)
     //or count (the total number of objects to be deleted)
     m_targetSize = 0;
@@ -21,13 +25,17 @@ void DDOperationDelete::ChildDoOperation(DDParameters &parameters)
     if (parameters.isFlag("size"))
         m_targetSize = m_rng.processFlag(parameters.getFlag("size"), m_manifest.getTotalSize());
     if (parameters.isFlag("count"))
+    {
         m_targetCount = m_rng.processFlag(parameters.getFlag("count"), m_manifest.getTotalFileCount());
+        //The default is 10% count but make sure we always do at least 1
+        if (m_targetCount == 0)
+            m_targetCount = 1;
+    }
 
     //We're going to iterate through the list of files using the coprime stride method. This will guarantee
     //that we efficiently delete the correct number of files even if the user requests a high percentage (90%)
-    uint64_t totalFileCount = m_manifest.getTotalFileCount();
     uint64_t filePos = m_rng.getFromRange(0, totalFileCount-1);
-    uint64_t stride = m_rng.getFromRange(1, totalFileCount-1);
+    uint64_t stride = (totalFileCount == 1) ? 1 : m_rng.getFromRange(1, totalFileCount-1);
     //The stride must not have a common denominator compared to the size of the list
     while (std::gcd(stride, totalFileCount) != 1) {
         stride = m_rng.getFromRange(1, totalFileCount-1);

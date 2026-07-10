@@ -20,6 +20,7 @@ protected:
 
     void readFile(fstream &inFile, DDMD5Hasher &hasher, uint64_t size);
     void writeFile(fstream &inFile, string fileExtension, DDMD5Hasher &hasher, DDDeterministicPCGPRNG &inRNG, uint64_t size);
+    void copyFile(fstream &sourceFile, fstream &destinationFile, DDMD5Hasher &hasher, uint64_t size);
 
     uint64_t m_processedFileSizeTotal;
 };

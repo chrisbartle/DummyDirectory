@@ -179,7 +179,7 @@ DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint6
     //the list until we find one that isn't too deep. We'll use the coprime stride method
     //which will let us move through the list in somewhat random order while guaranteeing that
     //we eventually hit every directory (including the root).
-    uint64_t stride = inRNG.getFromRange(1, size-1);
+    uint64_t stride = (size==1) ? 1 : inRNG.getFromRange(1, size-1);
     //The stride must not have a common denominator compared to the size of the list
     while (std::gcd(stride, size) != 1) {
         stride = inRNG.getFromRange(1, size-1);

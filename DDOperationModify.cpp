@@ -39,6 +39,10 @@ void DDOperationModify::ChildSetDefaultParameters(DDParameters &parameters)
 
 void DDOperationModify::ChildDoOperation(DDParameters &parameters)
 {
+    uint64_t totalFileCount = m_manifest.getTotalFileCount();
+    if (totalFileCount == 0)
+        return;
+
     //We need to determine our target point. It may either be size (the total number of bytes to be delete)
     //or count (the total number of objects to be deleted)
     m_targetSize = 0;
@@ -56,7 +60,6 @@ void DDOperationModify::ChildDoOperation(DDParameters &parameters)
 
     //We're going to iterate through the list of files using the coprime stride method. This will guarantee
     //that we efficiently modify the correct number of files even if the user requests a high percentage (90%)
-    uint64_t totalFileCount = m_manifest.getTotalFileCount();
     uint64_t filePos = m_rng.getFromRange(0, totalFileCount-1);
     uint64_t stride = (totalFileCount == 1) ? 1 : m_rng.getFromRange(1, totalFileCount-1);
     //The stride must not have a common denominator compared to the size of the list
@@ -161,7 +164,12 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             //The file size should not change
             uint64_t startPos = rng.getFromRange(MINIMUM_FILE_SIZE, file.size()-size-1);
             readFile(existingFile, hasher, startPos);
+            existingFile.clear();
+            existingFile.seekp(existingFile.tellg());
             writeFile(existingFile, fileExtension, hasher, rng, size);
+            existingFile.flush();
+            existingFile.clear();
+            existingFile.seekg(0, std::ios::cur);
             uint64_t endPos = startPos + size;
             readFile(existingFile, hasher, file.size() - endPos);
         }
@@ -171,18 +179,45 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             //The most efficient way to do this is to write parts out to a new file
             //and copy it over the original
             string tempFilename = "DD_" + m_rng.getSimpleString(10) + ".tmp";
-            filesystem::path absoluteTempPathname = absolutePathname.replace_filename(tempFilename);
-            fstream tempFile(absoluteTempPathname, std::ios::in | std::ios::out | std::ios::binary);
-            readFile(existingFile, hasher, file.size());
+            filesystem::path absoluteTempPathname = absolutePathname;
+            absoluteTempPathname.replace_filename(tempFilename);
+            fstream tempFile(absoluteTempPathname, std::ios::out | std::ios::binary );//| std::ios::trunc);
+            uint64_t startPos = rng.getFromRange(MINIMUM_FILE_SIZE, file.size()-size);
+            copyFile(existingFile, tempFile, hasher, startPos);
+            uint64_t endPos = startPos + size;
+            existingFile.seekg(endPos);
+            copyFile(existingFile, tempFile, hasher, file.size() - endPos + 1);
+            existingFile.close();
+            tempFile.close();
+            filesystem::remove(absolutePathname);
+            filesystem::rename(absoluteTempPathname, absolutePathname);
+            uint64_t newFileSize = file.size() - size;
+            file.setSize(newFileSize);
         }
         else if (modifyType == INSERT)
         {
-            readFile(existingFile, hasher, file.size());
+            //Pick a random point in the file and insert data.
+            //The most efficient way to do this is to write out to a new file and copy it back.
+            string tempFilename = "DD_" + m_rng.getSimpleString(10) + ".tmp";
+            filesystem::path absoluteTempPathname = absolutePathname;
+            absoluteTempPathname.replace_filename(tempFilename);
+            fstream tempFile(absoluteTempPathname, std::ios::out | std::ios::binary );//| std::ios::trunc);
+            uint64_t insertPos = rng.getFromRange(MINIMUM_FILE_SIZE, file.size());
+            copyFile(existingFile, tempFile, hasher, insertPos);
+            writeFile(tempFile, fileExtension, hasher, rng, size);
+            copyFile(existingFile, tempFile, hasher, file.size()-insertPos);
+            existingFile.close();
+            tempFile.close();
+            filesystem::remove(absolutePathname);
+            filesystem::rename(absoluteTempPathname, absolutePathname);
+            uint64_t newFileSize = file.size() + size;
+            file.setSize(newFileSize);
         }
 
         //Update the file stats
         file.setHash(hasher.finalize());
-        existingFile.close();
+        if (existingFile.is_open())
+            existingFile.close();
         m_processedCount++;
         m_processedSize += size;
         m_processedFileSizeTotal += file.size();
@@ -204,7 +239,7 @@ string DDOperationModify::GetOperationSummation()
     string summation;
     double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(m_endProcessing - m_startProcessing).count();
     double writeSpeed = (elapsedSeconds > 0) ? (m_processedSize / elapsedSeconds) : 0.0;
-    summation = std::format(std::locale(""), "{:L} items processed. {:L} bytes modified in {:.6Lf} seconds ({:.2Lf} bytes per second)\n{:L} bytes of files were modified",
+    summation = std::format(std::locale(""), "{:L} items processed. {:L} bytes worth of changes in {:.6Lf} seconds ({:.2Lf} bytes per second)\nThe total size of all affected files is {:L} bytes",
                             m_processedCount.load(), m_processedSize.load(), elapsedSeconds, writeSpeed, m_processedFileSizeTotal);
     return summation;
 }
@@ -261,4 +296,20 @@ void DDOperationModify::writeFile(fstream &inFile, string fileExtension, DDMD5Ha
 //    inFile.flush();
 //    inFile.clear();
 //    inFile.seekg(0, std::ios::cur);
+}
+
+void DDOperationModify::copyFile(fstream &sourceFile, fstream &destinationFile, DDMD5Hasher &hasher, uint64_t size)
+{
+    uint64_t copiedSoFar = 0;
+    char buffer[BUFFER_SIZE];
+    while ((copiedSoFar < size) && !sourceFile.eof())
+    {
+        uint64_t bufferSize = BUFFER_SIZE;
+        if (copiedSoFar + bufferSize > size)
+            bufferSize = size-copiedSoFar;
+        sourceFile.read(buffer, bufferSize);
+        destinationFile.write(buffer, sourceFile.gcount());
+        hasher.update(buffer, sourceFile.gcount());
+        copiedSoFar += sourceFile.gcount();
+    }
 }
