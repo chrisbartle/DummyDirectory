@@ -1,21 +1,23 @@
-#include "DDOperationRename.h"
+#include "DDOperationMove.h"
 
 #include <numeric>
 
-void DDOperationRename::ChildSetDefaultParameters(DDParameters &parameters)
+void DDOperationMove::ChildSetDefaultParameters(DDParameters &parameters)
 {
     //Either the size or the count must be filled in
     if (!parameters.isFlag("size") && !parameters.isFlag("count"))
     {
-        //Rename 10% as the default
+        //Move 10% as the default
         parameters.setFlag("count", "10%");
     }
 }
 
-void DDOperationRename::ChildDoOperation(DDParameters &parameters)
+void DDOperationMove::ChildDoOperation(DDParameters &parameters)
 {
     uint64_t totalFileCount = m_manifest.getTotalFileCount();
     if (totalFileCount == 0)
+        return;
+    if (m_manifest.getTotalDirectoryCount() == 1)
         return;
 
     //We need to determine our target point. It may either be size (the total number of bytes to be delete)
@@ -33,7 +35,7 @@ void DDOperationRename::ChildDoOperation(DDParameters &parameters)
     }
 
     //We're going to iterate through the list of files using the coprime stride method. This will guarantee
-    //that we efficiently delete the correct number of files even if the user requests a high percentage (90%)
+    //that we efficiently move the correct number of files even if the user requests a high percentage (90%)
     uint64_t filePos = m_rng.getFromRange(0, totalFileCount-1);
     uint64_t stride = (totalFileCount == 1) ? 1 : m_rng.getFromRange(1, totalFileCount-1);
     //The stride must not have a common denominator compared to the size of the list
@@ -59,12 +61,12 @@ void DDOperationRename::ChildDoOperation(DDParameters &parameters)
         filePos = (filePos + stride) % totalFileCount;
         iteratorCounter++;
         if (iteratorCounter > totalFileCount)
-            //Maybe user is trying to rename 110%?
+            //Maybe user is trying to move 110%?
             break;
     }
 }
 
-void DDOperationRename::ChildDoFileOperation(DDFile &file, DDParameters &parameters, uint64_t seed, uint64_t size)
+void DDOperationMove::ChildDoFileOperation(DDFile &file, DDParameters &parameters, uint64_t seed, uint64_t size)
 {
     //We can only processed queued items
     if (file.processingStatus() != DDFile::QUEUED)
@@ -77,11 +79,8 @@ void DDOperationRename::ChildDoFileOperation(DDFile &file, DDParameters &paramet
     try
     {
         DDDeterministicPCGPRNG rng(seed);
-        filesystem::path oldFilepath = file.relativePathname();
-        filesystem::path newFilepath = file.relativePathname();
-        string newFilename = "DD_" + rng.getSimpleString(10) + oldFilepath.extension().string();
-        newFilepath.replace_filename(newFilename);
-        filesystem::path absoluteNewPathname = parameters.ConvertToAbsolutePath(newFilepath);
+
+        //filesystem::path absoluteNewPathname = parameters.ConvertToAbsolutePath(newFilepath);
         //Make sure the file is there
         if (!std::filesystem::exists(absolutePathname))
         {
@@ -89,9 +88,24 @@ void DDOperationRename::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             return;
         }
 
-        //Rename the file
+        filesystem::path newPathname;
+        while (newPathname.empty())
+        {
+            //Pick a random directory to move this file to. It can't be where it originated from.
+            DDDirectory &newDirectory = m_manifest.getRandomDirectory(rng);
+            filesystem::path oldPath = file.relativePathname();
+            oldPath.remove_filename();
+            if (oldPath.compare(newDirectory.relativePath()) != 0)
+            {
+                //This is a different directory. Great, we can switch to it!
+                newPathname = newDirectory.relativePath() / file.relativePathname().filename();
+            }
+        }
+        filesystem::path absoluteNewPathname = parameters.ConvertToAbsolutePath(newPathname);
+
+        //Move the file
         filesystem::rename(absolutePathname, absoluteNewPathname);
-        file.setRelativePathname(newFilepath);
+        file.setRelativePathname(newPathname);
         m_processedCount++;
         m_processedSize += file.size();
     }
@@ -105,14 +119,15 @@ void DDOperationRename::ChildDoFileOperation(DDFile &file, DDParameters &paramet
         return;
     }
     file.setProcessingStatus(DDFile::COMPLETE);
+
 }
 
-string DDOperationRename::GetOperationSummation()
+string DDOperationMove::GetOperationSummation()
 {
     string summation;
     double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(m_endProcessing - m_startProcessing).count();
     double writeSpeed = (elapsedSeconds > 0) ? (m_processedSize / elapsedSeconds) : 0.0;
-    summation = std::format(std::locale(""), "{:L} items renamed. {:L} bytes renamed in {:.6Lf} seconds ({:.2Lf} bytes per second)",
+    summation = std::format(std::locale(""), "{:L} items moved. {:L} bytes moved in {:.6Lf} seconds ({:.2Lf} bytes per second)",
                             m_processedCount.load(), m_processedSize.load(), elapsedSeconds, writeSpeed);
     return summation;
 }
