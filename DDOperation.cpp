@@ -4,6 +4,7 @@
 
 #include "DDOperationAdd.h"
 #include "DDOperationModify.h"
+#include "DDOperationRename.h"
 #include "DDOperationDelete.h"
 #include "DDOperationAddDirectory.h"
 #include "DDOperationVerify.h"
@@ -43,6 +44,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationAdd>(inManifest);
     else if (inOperation == "modify")
         return std::make_unique<DDOperationModify>(inManifest);
+    else if (inOperation == "rename")
+        return std::make_unique<DDOperationRename>(inManifest);
     else if (inOperation == "delete")
         return std::make_unique<DDOperationDelete>(inManifest);
     else if (inOperation == "dadd")
