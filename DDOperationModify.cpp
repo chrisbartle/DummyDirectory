@@ -114,12 +114,12 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
         {
             string modifyTypeStr = parameters.getFlag("modifytype");
             if (modifyTypeStr == "random")
-                modifyType = ModificationType(rng.getFromRange(0, ModificationTypeCount));
+                modifyType = ModificationType(rng.getFromRange(0, ModificationTypeCount-1));
             else
                 modifyType = ConvertStringToModifcationType(modifyTypeStr);
         }
         else
-            modifyType = ModificationType(rng.getFromRange(0, ModificationTypeCount));
+            modifyType = ModificationType(rng.getFromRange(0, ModificationTypeCount-1));
         string fileExtension = file.relativePathname().extension().string();
 
         //Make sure the file is there
@@ -213,6 +213,8 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             uint64_t newFileSize = file.size() + size;
             file.setSize(newFileSize);
         }
+        else
+            throw runtime_error("Unkown modification type!");
 
         //Update the file stats
         file.setHash(hasher.finalize());
