@@ -8,6 +8,7 @@
 #include "DDOperationMove.h"
 #include "DDOperationDelete.h"
 #include "DDOperationAddDirectory.h"
+#include "DDOperationRenameDirectory.h"
 #include "DDOperationVerify.h"
 #include "DDOperationClean.h"
 #include "DDOperationRebuild.h"
@@ -53,6 +54,8 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationDelete>(inManifest);
     else if (inOperation == "dadd")
         return std::make_unique<DDOperationAddDirectory>(inManifest);
+    else if (inOperation == "drename")
+        return std::make_unique<DDOperationRenameDirectory>(inManifest);
     else if (inOperation == "verify")
         return std::make_unique<DDOperationVerify>(inManifest);
     else if (inOperation == "clean")
