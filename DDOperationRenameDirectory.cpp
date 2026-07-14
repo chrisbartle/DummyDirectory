@@ -8,10 +8,11 @@ using namespace std;
 
 void DDOperationRenameDirectory::ChildSetDefaultParameters(DDParameters &parameters)
 {
-    //Directory operations only work off of count, there's no meaningful "size" for a directory
-    if (!parameters.isFlag("count"))
+    //Either the size or the count must be filled in. A directory's "size" is the sum of the
+    //sizes of every file nested underneath it.
+    if (!parameters.isFlag("size") && !parameters.isFlag("count"))
     {
-        //Rename 10% of the directories as the default
+        //Rename 10% as the default
         parameters.setFlag("count", "10%");
     }
 }
@@ -24,11 +25,20 @@ void DDOperationRenameDirectory::ChildDoOperation(DDParameters &parameters)
     if (totalDirectoryCount <= 1)
         return;
 
-    //We need to determine our target count - the number of directories to rename
-    m_targetCount = m_rng.processFlag(parameters.getFlag("count"), totalDirectoryCount);
-    //The default is 10% count but make sure we always do at least 1
-    if (m_targetCount == 0)
-        m_targetCount = 1;
+    //We need to determine our target point. It may either be size (the total number of bytes,
+    //summed across all files nested inside the renamed directories) or count (the number of
+    //directories to rename).
+    m_targetSize = 0;
+    m_targetCount = 0;
+    if (parameters.isFlag("size"))
+        m_targetSize = m_rng.processFlag(parameters.getFlag("size"), m_manifest.getTotalSize());
+    if (parameters.isFlag("count"))
+    {
+        m_targetCount = m_rng.processFlag(parameters.getFlag("count"), totalDirectoryCount);
+        //The default is 10% count but make sure we always do at least 1
+        if (m_targetCount == 0)
+            m_targetCount = 1;
+    }
 
     //We're going to iterate through the list of directories using the coprime stride method, the
     //same approach used elsewhere in this codebase to efficiently visit a pseudo-random subset
@@ -40,10 +50,12 @@ void DDOperationRenameDirectory::ChildDoOperation(DDParameters &parameters)
         stride = m_rng.getFromRange(1, totalDirectoryCount-1);
     }
 
+    uint64_t sizeSoFar = 0;
     uint64_t countSoFar = 0;
     uint64_t iteratorCounter = 0;
-    //Loop until the target count is reached
-    while (countSoFar < m_targetCount)
+    //Loop until either the target size or target count is reached
+    while ((parameters.isFlag("size") && (sizeSoFar < m_targetSize))
+           || (parameters.isFlag("count") && (countSoFar < m_targetCount)))
     {
         //Position 0 (the root directory) is never a valid target
         if (dirPos != 0)
@@ -51,7 +63,11 @@ void DDOperationRenameDirectory::ChildDoOperation(DDParameters &parameters)
             DDDirectory &directory = m_manifest.getDirectoryByPos(dirPos);
             if (directory.processingStatus() == DDDirectory::NONE)
             {
+                //Measure the directory before renaming it; the rename only changes paths, not sizes
+                uint64_t directorySize = CalculateDirectorySize(directory.relativePath());
                 RenameOneDirectory(directory, parameters);
+                sizeSoFar += directorySize;
+                m_processedSize += directorySize;
                 countSoFar++;
                 //Update the status every 5 directories
                 if (countSoFar % 5 == 0)
@@ -189,11 +205,30 @@ filesystem::path DDOperationRenameDirectory::ReplacePathPrefix(const filesystem:
     return result;
 }
 
+/**
+ * @brief DDOperationRenameDirectory::CalculateDirectorySize
+ * A directory's size is the sum of the sizes of every file in the manifest that lives
+ * underneath it, including files inside any subdirectories.
+ * @param directoryPath The relative path of the directory to measure
+ * @return The total size, in bytes, of all files nested inside that directory
+ */
+uint64_t DDOperationRenameDirectory::CalculateDirectorySize(const filesystem::path &directoryPath)
+{
+    uint64_t totalSize = 0;
+    for (uint64_t fileLoop = 0; fileLoop < m_manifest.getTotalFileCount(); fileLoop++)
+    {
+        DDFile &file = m_manifest.getFileByPos(fileLoop);
+        if (IsDescendantPath(file.relativePathname(), directoryPath))
+            totalSize += file.size();
+    }
+    return totalSize;
+}
+
 string DDOperationRenameDirectory::GetOperationSummation()
 {
     string summation;
     double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(m_endProcessing - m_startProcessing).count();
-    summation = std::format(std::locale(""), "{:L} directories renamed in {:.6Lf} seconds",
-                            m_processedCount.load(), elapsedSeconds);
+    summation = std::format(std::locale(""), "{:L} directories renamed. {:L} bytes worth of files affected in {:.6Lf} seconds",
+                            m_processedCount.load(), m_processedSize.load(), elapsedSeconds);
     return summation;
 }

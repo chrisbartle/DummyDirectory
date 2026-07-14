@@ -266,9 +266,9 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
                 || (inOperation == "modify")            //modify files
                 || (inOperation == "rename")            //rename files
                 || (inOperation == "move")              //move files to a different directory
-                || (inOperation == "rename_directory")  //rename directories
-                || (inOperation == "move_directory")    //move directories to a different directory
-                || (inOperation == "delete_directory")  //delete directories
+                || (inOperation == "drename")  //rename directories
+                || (inOperation == "dmove")    //move directories to a different directory
+                || (inOperation == "ddelete")  //delete directories
                 )
                 percentageAllowed = 1000000;
             tempRNG.convertStringToNumber(inFlagValue, percentageAllowed);

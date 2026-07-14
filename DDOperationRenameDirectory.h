@@ -19,6 +19,7 @@ protected:
 private:
     void RenameOneDirectory(DDDirectory &directory, DDParameters &parameters);
     void UpdateDescendantPaths(const std::filesystem::path &oldPath, const std::filesystem::path &newPath);
+    uint64_t CalculateDirectorySize(const std::filesystem::path &directoryPath);
 
     static bool IsDescendantPath(const std::filesystem::path &path, const std::filesystem::path &ancestor);
     static std::filesystem::path ReplacePathPrefix(const std::filesystem::path &path, const std::filesystem::path &oldPrefix, const std::filesystem::path &newPrefix);
