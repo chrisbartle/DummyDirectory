@@ -164,15 +164,23 @@ uint64_t DDOperationRenameDirectory::UpdateDescendantPaths(const filesystem::pat
             subDirectory.setRelativePath(ReplacePathPrefix(subDirectory.relativePath(), oldPath, newPath));
     }
 
-    //Update any files that lived underneath the renamed directory. Since we're already looking
-    //at each one to fix up its path, add up their sizes here too rather than doing another pass.
+    //Update any files that lived underneath the renamed directory. A file can be a descendant of
+    //more than one directory that gets renamed during this operation (e.g. a parent directory and
+    //one of its own nested subdirectories both get selected), so its path may legitimately need
+    //updating more than once - but its size must only ever be counted once, or the reported total
+    //could exceed the manifest's real total. We use the file's own processing status as a one-time
+    //marker for that: it starts out as NONE, and we flip it to COMPLETE the first time it's counted.
     uint64_t totalSize = 0;
     for (uint64_t fileLoop = 0; fileLoop < m_manifest.getTotalFileCount(); fileLoop++)
     {
         DDFile &file = m_manifest.getFileByPos(fileLoop);
         if (IsDescendantPath(file.relativePathname(), oldPath))
         {
-            totalSize += file.size();
+            if (file.processingStatus() == DDFile::NONE)
+            {
+                totalSize += file.size();
+                file.setProcessingStatus(DDFile::COMPLETE);
+            }
             file.setRelativePathname(ReplacePathPrefix(file.relativePathname(), oldPath, newPath));
         }
     }
