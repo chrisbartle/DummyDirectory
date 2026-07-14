@@ -63,11 +63,9 @@ void DDOperationRenameDirectory::ChildDoOperation(DDParameters &parameters)
             DDDirectory &directory = m_manifest.getDirectoryByPos(dirPos);
             if (directory.processingStatus() == DDDirectory::NONE)
             {
-                //Measure the directory before renaming it; the rename only changes paths, not sizes
-                uint64_t directorySize = CalculateDirectorySize(directory.relativePath());
-                RenameOneDirectory(directory, parameters);
-                sizeSoFar += directorySize;
-                m_processedSize += directorySize;
+                //RenameOneDirectory reports how many bytes worth of files it moved, and
+                //also updates m_processedSize/m_processedCount itself
+                sizeSoFar += RenameOneDirectory(directory, parameters);
                 countSoFar++;
                 //Update the status every 5 directories
                 if (countSoFar % 5 == 0)
@@ -89,8 +87,10 @@ void DDOperationRenameDirectory::ChildDoOperation(DDParameters &parameters)
  * file and subdirectory in the manifest that lived underneath it.
  * @param directory The directory to be renamed
  * @param parameters The parameters for this operation
+ * @return The total size, in bytes, of the files that were moved underneath the renamed
+ * directory (i.e. the directory's size). Returns 0 if the rename did not happen.
  */
-void DDOperationRenameDirectory::RenameOneDirectory(DDDirectory &directory, DDParameters &parameters)
+uint64_t DDOperationRenameDirectory::RenameOneDirectory(DDDirectory &directory, DDParameters &parameters)
 {
     filesystem::path oldRelativePath = directory.relativePath();
     filesystem::path absoluteOldPath = parameters.ConvertToAbsolutePath(oldRelativePath);
@@ -102,7 +102,7 @@ void DDOperationRenameDirectory::RenameOneDirectory(DDDirectory &directory, DDPa
         if (!std::filesystem::exists(absoluteOldPath))
         {
             directory.recordProcessingError("Directory is missing from the file system: " + absoluteOldPath.string());
-            return;
+            return 0;
         }
 
         //Come up with a new name for the directory. It stays inside the same parent directory.
@@ -115,7 +115,7 @@ void DDOperationRenameDirectory::RenameOneDirectory(DDDirectory &directory, DDPa
         if (std::filesystem::exists(absoluteNewPath))
         {
             directory.setProcessingStatus(DDDirectory::CONFLICT);
-            return;
+            return 0;
         }
 
         //Renaming the directory on disk moves its entire subtree (files and subdirectories) at once
@@ -126,30 +126,35 @@ void DDOperationRenameDirectory::RenameOneDirectory(DDDirectory &directory, DDPa
 
         //Now update every file and subdirectory in the manifest whose path descended from
         //the old directory path, since the physical rename moved them all underneath it.
-        UpdateDescendantPaths(oldRelativePath, newRelativePath);
+        //This also tells us the directory's size, since that's just the sum of its files.
+        uint64_t directorySize = UpdateDescendantPaths(oldRelativePath, newRelativePath);
 
         m_processedCount++;
+        m_processedSize += directorySize;
+        directory.setProcessingStatus(DDDirectory::NONE);
+        return directorySize;
     }
     catch (const std::exception& e) {
         directory.recordProcessingError("Exception thrown when processing directory " + absoluteOldPath.string() + ": " + e.what());
-        return;
+        return 0;
     }
     catch(...)
     {
         directory.recordProcessingError("Unknown exception when processing directory " + absoluteOldPath.string());
-        return;
+        return 0;
     }
-    directory.setProcessingStatus(DDDirectory::NONE);
 }
 
 /**
  * @brief DDOperationRenameDirectory::UpdateDescendantPaths
  * Walks every file and directory in the manifest and, for any whose relative path descended
- * from oldPath, rewrites it so that it descends from newPath instead.
+ * from oldPath, rewrites it so that it descends from newPath instead. While walking the files,
+ * it also totals up their size - that total is the renamed directory's size.
  * @param oldPath The old directory path that was renamed
  * @param newPath The new directory path
+ * @return The combined size, in bytes, of every file found underneath oldPath
  */
-void DDOperationRenameDirectory::UpdateDescendantPaths(const filesystem::path &oldPath, const filesystem::path &newPath)
+uint64_t DDOperationRenameDirectory::UpdateDescendantPaths(const filesystem::path &oldPath, const filesystem::path &newPath)
 {
     //Update any subdirectories that lived underneath the renamed directory
     for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
@@ -159,13 +164,19 @@ void DDOperationRenameDirectory::UpdateDescendantPaths(const filesystem::path &o
             subDirectory.setRelativePath(ReplacePathPrefix(subDirectory.relativePath(), oldPath, newPath));
     }
 
-    //Update any files that lived underneath the renamed directory
+    //Update any files that lived underneath the renamed directory. Since we're already looking
+    //at each one to fix up its path, add up their sizes here too rather than doing another pass.
+    uint64_t totalSize = 0;
     for (uint64_t fileLoop = 0; fileLoop < m_manifest.getTotalFileCount(); fileLoop++)
     {
         DDFile &file = m_manifest.getFileByPos(fileLoop);
         if (IsDescendantPath(file.relativePathname(), oldPath))
+        {
+            totalSize += file.size();
             file.setRelativePathname(ReplacePathPrefix(file.relativePathname(), oldPath, newPath));
+        }
     }
+    return totalSize;
 }
 
 /**
@@ -203,25 +214,6 @@ filesystem::path DDOperationRenameDirectory::ReplacePathPrefix(const filesystem:
         result /= *pathIt;
 
     return result;
-}
-
-/**
- * @brief DDOperationRenameDirectory::CalculateDirectorySize
- * A directory's size is the sum of the sizes of every file in the manifest that lives
- * underneath it, including files inside any subdirectories.
- * @param directoryPath The relative path of the directory to measure
- * @return The total size, in bytes, of all files nested inside that directory
- */
-uint64_t DDOperationRenameDirectory::CalculateDirectorySize(const filesystem::path &directoryPath)
-{
-    uint64_t totalSize = 0;
-    for (uint64_t fileLoop = 0; fileLoop < m_manifest.getTotalFileCount(); fileLoop++)
-    {
-        DDFile &file = m_manifest.getFileByPos(fileLoop);
-        if (IsDescendantPath(file.relativePathname(), directoryPath))
-            totalSize += file.size();
-    }
-    return totalSize;
 }
 
 string DDOperationRenameDirectory::GetOperationSummation()

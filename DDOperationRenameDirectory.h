@@ -17,9 +17,8 @@ protected:
     virtual std::string GetOperationSummation() override;
 
 private:
-    void RenameOneDirectory(DDDirectory &directory, DDParameters &parameters);
-    void UpdateDescendantPaths(const std::filesystem::path &oldPath, const std::filesystem::path &newPath);
-    uint64_t CalculateDirectorySize(const std::filesystem::path &directoryPath);
+    uint64_t RenameOneDirectory(DDDirectory &directory, DDParameters &parameters);
+    uint64_t UpdateDescendantPaths(const std::filesystem::path &oldPath, const std::filesystem::path &newPath);
 
     static bool IsDescendantPath(const std::filesystem::path &path, const std::filesystem::path &ancestor);
     static std::filesystem::path ReplacePathPrefix(const std::filesystem::path &path, const std::filesystem::path &oldPrefix, const std::filesystem::path &newPrefix);
