@@ -22,6 +22,10 @@ private:
 
     static bool IsDescendantPath(const std::filesystem::path &path, const std::filesystem::path &ancestor);
     static std::filesystem::path ReplacePathPrefix(const std::filesystem::path &path, const std::filesystem::path &oldPrefix, const std::filesystem::path &newPrefix);
+
+    //The number of individual files whose path was affected by a directory rename. This is
+    //distinct from m_processedCount, which counts the directories themselves.
+    uint64_t m_filesAffected = 0;
 };
 
 #endif // DDOPERATIONRENAMEDIRECTORY_H

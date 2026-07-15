@@ -20,6 +20,7 @@ void DDOperationRenameDirectory::ChildSetDefaultParameters(DDParameters &paramet
 void DDOperationRenameDirectory::ChildDoOperation(DDParameters &parameters)
 {
     uint64_t totalDirectoryCount = m_manifest.getTotalDirectoryCount();
+    m_filesAffected = 0;
     //Position 0 is always the root directory and it can never be renamed, so there must be
     //at least one other directory for this operation to do anything.
     if (totalDirectoryCount <= 1)
@@ -179,6 +180,7 @@ uint64_t DDOperationRenameDirectory::UpdateDescendantPaths(const filesystem::pat
             if (file.processingStatus() == DDFile::NONE)
             {
                 totalSize += file.size();
+                m_filesAffected++;
                 file.setProcessingStatus(DDFile::COMPLETE);
             }
             file.setRelativePathname(ReplacePathPrefix(file.relativePathname(), oldPath, newPath));
@@ -228,7 +230,8 @@ string DDOperationRenameDirectory::GetOperationSummation()
 {
     string summation;
     double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(m_endProcessing - m_startProcessing).count();
-    summation = std::format(std::locale(""), "{:L} directories renamed. {:L} bytes worth of files affected in {:.6Lf} seconds",
-                            m_processedCount.load(), m_processedSize.load(), elapsedSeconds);
+    double writeSpeed = (elapsedSeconds > 0) ? (m_processedSize / elapsedSeconds) : 0.0;
+    summation = std::format(std::locale(""), "{:L} directories renamed, encompassing {:L} files. {:L} bytes affected in {:.6Lf} seconds\n({:.2Lf} bytes per second)",
+                            m_processedCount.load(), m_filesAffected, m_processedSize.load(), elapsedSeconds, writeSpeed);
     return summation;
 }
