@@ -24,6 +24,7 @@ add_executable(DummyDir main.cpp
     DDOperationRename.h DDOperationRename.cpp
     DDOperationMove.h DDOperationMove.cpp
     DDOperationRenameDirectory.h DDOperationRenameDirectory.cpp
+    DDOperationDeleteDirectory.cpp DDOperationDeleteDirectory.h
 )
 
 # We want to make the build timestamp available
