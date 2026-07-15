@@ -1,0 +1,31 @@
+#ifndef DDOPERATIONMOVEDIRECTORY_H
+#define DDOPERATIONMOVEDIRECTORY_H
+
+#include "DDOperation.h"
+#include "DDDirectory.h"
+
+#include <filesystem>
+
+class DDOperationMoveDirectory : public DDOperation
+{
+public:
+    using DDOperation::DDOperation;
+
+protected:
+    virtual void ChildSetDefaultParameters(DDParameters &parameters) override;
+    virtual void ChildDoOperation(DDParameters &parameters) override;
+    virtual std::string GetOperationSummation() override;
+
+private:
+    uint64_t MoveOneDirectory(DDDirectory &directory, DDParameters &parameters);
+    uint64_t UpdateDescendantPaths(const std::filesystem::path &oldPath, const std::filesystem::path &newPath);
+
+    static bool IsDescendantPath(const std::filesystem::path &path, const std::filesystem::path &ancestor);
+    static std::filesystem::path ReplacePathPrefix(const std::filesystem::path &path, const std::filesystem::path &oldPrefix, const std::filesystem::path &newPrefix);
+
+    //The number of individual files whose path was affected by a directory move. This is
+    //distinct from m_processedCount, which counts the directories themselves.
+    uint64_t m_filesAffected = 0;
+};
+
+#endif // DDOPERATIONMOVEDIRECTORY_H
