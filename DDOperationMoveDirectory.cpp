@@ -43,6 +43,14 @@ void DDOperationMoveDirectory::ChildDoOperation(DDParameters &parameters)
             m_targetCount = 1;
     }
 
+    //Determine the maximum depth of the directory structure, same default as DDOperationAddDirectory
+    uint64_t maxDepth = 2;
+    if (parameters.isFlag("maxdepth"))
+        maxDepth = stoul(parameters.getFlag("maxdepth"));
+
+    if (maxDepth == 0)
+        throw runtime_error("It is not possible to move directories if the maximum depth is set to 0");
+
     //We're going to iterate through the list of directories using the coprime stride method, the
     //same approach used elsewhere in this codebase to efficiently visit a pseudo-random subset
     //of the list, even if the user requests a high percentage.
@@ -68,7 +76,7 @@ void DDOperationMoveDirectory::ChildDoOperation(DDParameters &parameters)
             {
                 //MoveOneDirectory reports how many bytes worth of files it moved, and also
                 //updates m_processedSize/m_processedCount itself
-                sizeSoFar += MoveOneDirectory(directory, parameters);
+                sizeSoFar += MoveOneDirectory(directory, parameters, maxDepth);
                 countSoFar++;
                 //Update the status every 5 directories
                 if (countSoFar % 5 == 0)
@@ -91,10 +99,11 @@ void DDOperationMoveDirectory::ChildDoOperation(DDParameters &parameters)
  * in the manifest that lived underneath it.
  * @param directory The directory to be moved
  * @param parameters The parameters for this operation
+ * @param maxDepth The deepest any directory is allowed to end up at, from the --maxdepth flag
  * @return The total size, in bytes, of the files that were moved underneath the directory
  * (i.e. the directory's size). Returns 0 if the move did not happen.
  */
-uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDParameters &parameters)
+uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDParameters &parameters, uint64_t maxDepth)
 {
     filesystem::path oldRelativePath = directory.relativePath();
     filesystem::path absoluteOldPath = parameters.ConvertToAbsolutePath(oldRelativePath);
@@ -109,9 +118,17 @@ uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDPa
             return 0;
         }
 
+        //The directory being moved might already have its own subtree of subdirectories
+        //nested underneath it, so moving it isn't just about the directory's own depth - we
+        //need to know how much deeper its existing subtree extends, so that wherever we put it,
+        //none of its descendants end up past maxDepth either.
+        uint64_t subtreeExtraDepth = GetSubtreeMaxDepth(oldRelativePath, directory.getRelativePathDepth());
+
         //Pick a new parent directory for this one to live under. It can't be this directory
-        //itself or any of its own descendants (that would nest it inside itself), and it can't
-        //be its current parent (that wouldn't actually move it anywhere).
+        //itself or any of its own descendants (that would nest it inside itself), it can't be
+        //its current parent (that wouldn't actually move it anywhere), and placing the
+        //directory - along with its existing subtree - underneath it must not push any part of
+        //it deeper than maxDepth.
         filesystem::path currentParentPath = oldRelativePath.parent_path();
         vector<uint64_t> candidatePositions;
         candidatePositions.reserve(m_manifest.getTotalDirectoryCount());
@@ -122,6 +139,8 @@ uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDPa
                 continue; //this is the directory itself, or one of its own descendants
             if (candidate.relativePath() == currentParentPath)
                 continue; //this is where the directory already lives
+            if (candidate.getRelativePathDepth() + 1 + subtreeExtraDepth > maxDepth)
+                continue; //the moved directory's deepest descendant would end up too deep
             candidatePositions.push_back(dirLoop);
         }
         if (candidatePositions.empty())
@@ -167,6 +186,29 @@ uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDPa
         directory.recordProcessingError("Unknown exception when processing directory " + absoluteOldPath.string());
         return 0;
     }
+}
+
+/**
+ * @brief DDOperationMoveDirectory::GetSubtreeMaxDepth
+ * Determines how many levels deep the deepest descendant of a directory lives, relative to
+ * the directory itself. A directory with no subdirectories underneath it returns 0.
+ * @param directoryPath The relative path of the directory being measured
+ * @param directoryDepth That directory's own depth, i.e. its getRelativePathDepth()
+ * @return The relative depth of the deepest nested subdirectory
+ */
+uint64_t DDOperationMoveDirectory::GetSubtreeMaxDepth(const filesystem::path &directoryPath, uint64_t directoryDepth)
+{
+    uint64_t maxExtraDepth = 0;
+    for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
+    {
+        DDDirectory &candidate = m_manifest.getDirectoryByPos(dirLoop);
+        if (!IsDescendantPath(candidate.relativePath(), directoryPath))
+            continue;
+        uint64_t extraDepth = candidate.getRelativePathDepth() - directoryDepth;
+        if (extraDepth > maxExtraDepth)
+            maxExtraDepth = extraDepth;
+    }
+    return maxExtraDepth;
 }
 
 /**
