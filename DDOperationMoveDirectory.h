@@ -5,6 +5,7 @@
 #include "DDDirectory.h"
 
 #include <filesystem>
+#include <vector>
 
 class DDOperationMoveDirectory : public DDOperation
 {
@@ -20,6 +21,7 @@ private:
     uint64_t MoveOneDirectory(DDDirectory &directory, DDParameters &parameters, uint64_t maxDepth);
     uint64_t UpdateDescendantPaths(const std::filesystem::path &oldPath, const std::filesystem::path &newPath);
     uint64_t GetSubtreeMaxDepth(const std::filesystem::path &directoryPath, uint64_t directoryDepth);
+    std::vector<uint64_t> FindCandidateDestinations(const std::filesystem::path &directoryPath, uint64_t subtreeExtraDepth, uint64_t maxDepth);
 
     static bool IsDescendantPath(const std::filesystem::path &path, const std::filesystem::path &ancestor);
     static std::filesystem::path ReplacePathPrefix(const std::filesystem::path &path, const std::filesystem::path &oldPrefix, const std::filesystem::path &newPrefix);

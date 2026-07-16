@@ -1,7 +1,7 @@
 #include "DDOperationMoveDirectory.h"
 
-#include <numeric>
 #include <vector>
+#include <utility>
 #include <format>
 #include <locale>
 
@@ -51,44 +51,55 @@ void DDOperationMoveDirectory::ChildDoOperation(DDParameters &parameters)
     if (maxDepth == 0)
         throw runtime_error("It is not possible to move directories if the maximum depth is set to 0");
 
-    //We're going to iterate through the list of directories using the coprime stride method, the
-    //same approach used elsewhere in this codebase to efficiently visit a pseudo-random subset
-    //of the list, even if the user requests a high percentage.
-    uint64_t dirPos = m_rng.getFromRange(1, totalDirectoryCount-1);
-    uint64_t stride = (totalDirectoryCount <= 2) ? 1 : m_rng.getFromRange(1, totalDirectoryCount-1);
-    //The stride must not have a common denominator compared to the size of the list
-    while (std::gcd(stride, totalDirectoryCount) != 1) {
-        stride = m_rng.getFromRange(1, totalDirectoryCount-1);
+    //Rather than picking directories at random and simply giving up on the ones that turn out
+    //to have nowhere valid to go, first work out which directories can actually be moved
+    //somewhere under the current constraints (maxdepth in particular can rule out a lot of
+    //them), and only ever select from among those.
+    vector<uint64_t> movablePositions;
+    movablePositions.reserve(totalDirectoryCount);
+    for (uint64_t dirLoop = 1; dirLoop < totalDirectoryCount; dirLoop++)
+    {
+        DDDirectory &candidate = m_manifest.getDirectoryByPos(dirLoop);
+        uint64_t subtreeExtraDepth = GetSubtreeMaxDepth(candidate.relativePath(), candidate.getRelativePathDepth());
+        if (!FindCandidateDestinations(candidate.relativePath(), subtreeExtraDepth, maxDepth).empty())
+            movablePositions.push_back(dirLoop);
+    }
+    //Nothing in the manifest can be moved anywhere under these constraints
+    if (movablePositions.empty())
+        return;
+
+    //Shuffle the movable directories into a random order (Fisher-Yates), so we can walk through
+    //them without repeats and without ever needing to reject-and-retry on a directory that has
+    //nowhere to go.
+    for (uint64_t i = movablePositions.size() - 1; i > 0; i--)
+    {
+        uint64_t j = m_rng.getFromRange(0, i);
+        std::swap(movablePositions[i], movablePositions[j]);
     }
 
     uint64_t sizeSoFar = 0;
     uint64_t countSoFar = 0;
-    uint64_t iteratorCounter = 0;
-    //Loop until either the target size or target count is reached
-    while ((parameters.isFlag("size") && (sizeSoFar < m_targetSize))
-           || (parameters.isFlag("count") && (countSoFar < m_targetCount)))
+    uint64_t cursor = 0;
+    //Loop until either the target size or target count is reached, or we run out of movable
+    //directories to try (a move can, rarely, still fail here - see MoveOneDirectory - if an
+    //earlier move in this same run changed the depth of what had been this directory's only
+    //valid destination).
+    while (((parameters.isFlag("size") && (sizeSoFar < m_targetSize))
+            || (parameters.isFlag("count") && (countSoFar < m_targetCount)))
+           && (cursor < movablePositions.size()))
     {
-        //Position 0 (the root directory) is never a valid target
-        if (dirPos != 0)
+        DDDirectory &directory = m_manifest.getDirectoryByPos(movablePositions[cursor]);
+        if (directory.processingStatus() == DDDirectory::NONE)
         {
-            DDDirectory &directory = m_manifest.getDirectoryByPos(dirPos);
-            if (directory.processingStatus() == DDDirectory::NONE)
-            {
-                //MoveOneDirectory reports how many bytes worth of files it moved, and also
-                //updates m_processedSize/m_processedCount itself
-                sizeSoFar += MoveOneDirectory(directory, parameters, maxDepth);
-                countSoFar++;
-                //Update the status every 5 directories
-                if (countSoFar % 5 == 0)
-                    UpdateProcessingStatus();
-            }
+            //MoveOneDirectory reports how many bytes worth of files it moved, and also
+            //updates m_processedSize/m_processedCount itself
+            sizeSoFar += MoveOneDirectory(directory, parameters, maxDepth);
+            countSoFar++;
+            //Update the status every 5 directories
+            if (countSoFar % 5 == 0)
+                UpdateProcessingStatus();
         }
-        // Jump forward by the stride and wrap around using modulo
-        dirPos = (dirPos + stride) % totalDirectoryCount;
-        iteratorCounter++;
-        if (iteratorCounter > totalDirectoryCount)
-            //Maybe user is trying to move more directories than actually exist
-            break;
+        cursor++;
     }
 }
 
@@ -129,22 +140,12 @@ uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDPa
         //its current parent (that wouldn't actually move it anywhere), and placing the
         //directory - along with its existing subtree - underneath it must not push any part of
         //it deeper than maxDepth.
-        filesystem::path currentParentPath = oldRelativePath.parent_path();
-        vector<uint64_t> candidatePositions;
-        candidatePositions.reserve(m_manifest.getTotalDirectoryCount());
-        for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
-        {
-            DDDirectory &candidate = m_manifest.getDirectoryByPos(dirLoop);
-            if (IsDescendantPath(candidate.relativePath(), oldRelativePath))
-                continue; //this is the directory itself, or one of its own descendants
-            if (candidate.relativePath() == currentParentPath)
-                continue; //this is where the directory already lives
-            if (candidate.getRelativePathDepth() + 1 + subtreeExtraDepth > maxDepth)
-                continue; //the moved directory's deepest descendant would end up too deep
-            candidatePositions.push_back(dirLoop);
-        }
+        vector<uint64_t> candidatePositions = FindCandidateDestinations(oldRelativePath, subtreeExtraDepth, maxDepth);
         if (candidatePositions.empty())
         {
+            //This can happen even though ChildDoOperation only selects from directories that
+            //were pre-screened as movable, if an earlier move in this same run changed the
+            //depth of what had been this directory's only valid destination.
             directory.recordProcessingError("No valid destination directory found for " + absoluteOldPath.string());
             return 0;
         }
@@ -209,6 +210,37 @@ uint64_t DDOperationMoveDirectory::GetSubtreeMaxDepth(const filesystem::path &di
             maxExtraDepth = extraDepth;
     }
     return maxExtraDepth;
+}
+
+/**
+ * @brief DDOperationMoveDirectory::FindCandidateDestinations
+ * Finds every directory in the manifest that directoryPath could validly be moved underneath:
+ * not itself or one of its own descendants (that would nest it inside itself), not its current
+ * parent (that wouldn't actually move it anywhere), and not so shallow-relative-to-its-subtree
+ * that any part of it would end up deeper than maxDepth.
+ * @param directoryPath The relative path of the directory being moved
+ * @param subtreeExtraDepth How many levels deeper the directory's existing subtree extends,
+ * from GetSubtreeMaxDepth()
+ * @param maxDepth The deepest any directory is allowed to end up at, from the --maxdepth flag
+ * @return The manifest positions of every valid destination directory (may be empty)
+ */
+vector<uint64_t> DDOperationMoveDirectory::FindCandidateDestinations(const filesystem::path &directoryPath, uint64_t subtreeExtraDepth, uint64_t maxDepth)
+{
+    filesystem::path currentParentPath = directoryPath.parent_path();
+    vector<uint64_t> candidatePositions;
+    candidatePositions.reserve(m_manifest.getTotalDirectoryCount());
+    for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
+    {
+        DDDirectory &candidate = m_manifest.getDirectoryByPos(dirLoop);
+        if (IsDescendantPath(candidate.relativePath(), directoryPath))
+            continue; //this is the directory itself, or one of its own descendants
+        if (candidate.relativePath() == currentParentPath)
+            continue; //this is where the directory already lives
+        if (candidate.getRelativePathDepth() + 1 + subtreeExtraDepth > maxDepth)
+            continue; //the moved directory's deepest descendant would end up too deep
+        candidatePositions.push_back(dirLoop);
+    }
+    return candidatePositions;
 }
 
 /**
