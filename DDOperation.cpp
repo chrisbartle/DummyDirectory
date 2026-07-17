@@ -8,6 +8,9 @@
 #include "DDOperationMove.h"
 #include "DDOperationDelete.h"
 #include "DDOperationAddDirectory.h"
+#include "DDOperationRenameDirectory.h"
+#include "DDOperationMoveDirectory.h"
+#include "DDOperationDeleteDirectory.h"
 #include "DDOperationVerify.h"
 #include "DDOperationClean.h"
 #include "DDOperationRebuild.h"
@@ -53,6 +56,12 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationDelete>(inManifest);
     else if (inOperation == "dadd")
         return std::make_unique<DDOperationAddDirectory>(inManifest);
+    else if (inOperation == "drename")
+        return std::make_unique<DDOperationRenameDirectory>(inManifest);
+    else if (inOperation == "dmove")
+        return std::make_unique<DDOperationMoveDirectory>(inManifest);
+    else if (inOperation == "ddelete")
+        return std::make_unique<DDOperationDeleteDirectory>(inManifest);
     else if (inOperation == "verify")
         return std::make_unique<DDOperationVerify>(inManifest);
     else if (inOperation == "clean")
@@ -263,9 +272,9 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
                 || (inOperation == "modify")            //modify files
                 || (inOperation == "rename")            //rename files
                 || (inOperation == "move")              //move files to a different directory
-                || (inOperation == "rename_directory")  //rename directories
-                || (inOperation == "move_directory")    //move directories to a different directory
-                || (inOperation == "delete_directory")  //delete directories
+                || (inOperation == "drename")  //rename directories
+                || (inOperation == "dmove")    //move directories to a different directory
+                || (inOperation == "ddelete")  //delete directories
                 )
                 percentageAllowed = 1000000;
             tempRNG.convertStringToNumber(inFlagValue, percentageAllowed);

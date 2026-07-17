@@ -15,6 +15,79 @@ void statusCallback(double inPercentage)
     cout << "\r" << inPercentage*100 << "%          " << std::flush;
 }
 
+void PrintHelp()
+{
+    cout <<
+        R"(Dummy Directory (DummyDir) generates and manipulates a directory tree of files for testing
+purposes. It uses a deterministic, seedable pseudo-random number generator, so a run can be
+reproduced exactly later from its recorded seed.
+
+USAGE:
+    DummyDir <operation> <directory> [options]
+
+    <operation>   The operation to perform (see OPERATIONS below)
+    <directory>   Path to the dummy directory to operate on. Created if it doesn't exist.
+
+OPERATIONS:
+    add       Add new files to the dummy directory
+    delete    Delete existing files from the dummy directory
+    modify    Modify the contents of existing files
+    rename    Rename existing files
+    move      Move existing files to a different directory
+    dadd      Add new subdirectories
+    drename   Rename existing subdirectories
+    dmove     Move existing subdirectories to a different parent directory
+    ddelete   Delete existing subdirectories, along with everything inside them
+    clean     Remove every file and directory this tool has created
+    verify    Check that every file on disk matches what the manifest recorded
+    rebuild   Rebuild the manifest from what's actually present on disk
+
+OPTIONS:
+    --size=<value>       Total number of bytes the operation should affect. Accepts K/M/G/T/P/E
+                         suffixes (e.g. 500M, 2.5G), a percentage of the relevant total (e.g.
+                         25%), or a range to pick randomly from (e.g. 1k-10m).
+    --count=<value>      Total number of items (files or directories) the operation should
+                         affect. Accepts the same percentage/range rules as --size.
+    --filesize=<value>   For "add", the size of each new file. For "modify", how much of each
+                         file's content to change. Same value rules as --size.
+    --filetype=<type>    For "add" only: random, binary, or text. Default: random.
+    --modifytype=<type>  For "modify" only: append, truncate, overwrite, chop, insert, or
+                         random. Default: random.
+    --maxdepth=<N>       For "dadd" and "dmove" only: how many levels deep the directory
+                         structure is allowed to go. Default: 2.
+    --threads=<N>        Number of worker threads to use for file operations. 0 or 1 disables
+                         threading. Default: the number of hardware threads available.
+    --seed=<hex>         Seed for the pseudo-random number generator, as a hex string. If not
+                         given, a random seed is generated and recorded so the run can be
+                         reproduced later.
+    --verbose            Print details about every individual error, conflict, or discrepancy
+                         found, instead of just a summary count. Shorthand: -v
+    --replay             Reserved for future use.
+    --help               Show this help message and exit.
+
+    Shorthand: -s = --size, -c = --count, -v = --verbose
+
+EXAMPLES:
+    DummyDir add ./mydir --size=500M
+        Add enough new files to ./mydir to reach 500 megabytes of new data.
+
+    DummyDir delete ./mydir --count=25%
+        Delete 25% of the files currently in ./mydir.
+
+    DummyDir dmove ./mydir --count=5 --maxdepth=3
+        Move 5 random subdirectories to new parent directories, without letting the tree
+        exceed 3 levels of nesting.
+
+    DummyDir verify ./mydir --verbose
+        Check every file against the manifest and print details on anything missing,
+        different, or errored.
+
+    DummyDir rebuild ./mydir
+        Rebuild DummyDir.manifest from what's actually present in ./mydir.
+)";
+}
+
+
 int main(int argc, char *argv[])
 {
     //We'll do everything, and I mean EVERYTHING, inside this try/catch
@@ -26,6 +99,12 @@ int main(int argc, char *argv[])
         //Load the parameters
         DDParameters mainParameters;
         mainParameters.LoadFromCommandLine(argc, argv);
+
+        if (mainParameters.isFlag("help"))
+        {
+            PrintHelp();
+            return 0;
+        }
 
         //Is this a replay?
         if (mainParameters.isFlag("replay"))
@@ -40,6 +119,7 @@ int main(int argc, char *argv[])
         if (mainParameters.getOperation().empty())
         {
             cout << "An operation must be provided." << endl;
+            cout << "Use --help for the documentation." << endl;
             return 1;
         }
         string operationValidation = DDOperation::ValidateOperationType(mainParameters.getOperation());
