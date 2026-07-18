@@ -23,7 +23,7 @@ purposes. It uses a deterministic, seedable pseudo-random number generator, so a
 reproduced exactly later from its recorded seed.
 
 USAGE:
-    DummyDir <operation> <directory> [options]
+    dummydir <operation> <directory> [options]
 
     <operation>   The operation to perform (see OPERATIONS below)
     <directory>   Path to the dummy directory to operate on. Created if it doesn't exist.
@@ -68,21 +68,22 @@ OPTIONS:
     Shorthand: -s = --size, -c = --count, -v = --verbose
 
 EXAMPLES:
-    DummyDir add ./mydir --size=500M
-        Add enough new files to ./mydir to reach 500 megabytes of new data.
+    dummydir add ./mydir --size=500M --filesize=10M-20M
+        Add enough new files to ./mydir to reach 500 megabytes of new data. Each file will be
+        between 10 and 20 megabytes in size.
 
-    DummyDir delete ./mydir --count=25%
+    dummydir delete ./mydir --count=25%
         Delete 25% of the files currently in ./mydir.
 
-    DummyDir dmove ./mydir --count=5 --maxdepth=3
+    dummydir dmove ./mydir --count=5 --maxdepth=3
         Move 5 random subdirectories to new parent directories, without letting the tree
         exceed 3 levels of nesting.
 
-    DummyDir verify ./mydir --verbose
+    dummydir verify ./mydir --verbose
         Check every file against the manifest and print details on anything missing,
         different, or errored.
 
-    DummyDir rebuild ./mydir
+    dummydir rebuild ./mydir
         Rebuild DummyDir.manifest from what's actually present in ./mydir.
 )";
 }
