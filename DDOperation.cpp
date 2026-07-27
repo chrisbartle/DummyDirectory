@@ -286,8 +286,8 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
 
     if (inFlag == "filetype")
     {
-        if ((inFlagValue != "random") && (inFlagValue != "binary") && (inFlagValue != "text"))
-            return "filetype must be set to random, binary, or text";
+        if ((inFlagValue != "random") && (inFlagValue != "binary") && (inFlagValue != "sparse") && (inFlagValue != "text"))
+            return "filetype must be set to random, binary, sparse, or text";
         if (inOperation != "add")
             return "filetype can only be set for add operations";
         return "";

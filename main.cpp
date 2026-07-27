@@ -52,7 +52,7 @@ OPTIONS:
                          Files with identical seeds will be identical. Ranges may be used.
     --filesize=<value>   For "add", the size of each new file. For "modify", how much of each
                          file's content to change. Same value rules as --size.
-    --filetype=<type>    For "add" only: random, binary, or text. Default: random.
+    --filetype=<type>    For "add" only: random, binary, sparse, or text. Default: random.
     --modifytype=<type>  For "modify" only: append, truncate, overwrite, chop, insert, or
                          random. Default: random.
     --maxdepth=<N>       For "dadd" and "dmove" only: how many levels deep the directory

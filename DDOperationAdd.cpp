@@ -42,13 +42,18 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
         if (!parameters.isFlag("filetype") || (parameters.getFlag("filetype") == "random"))
         {
             //Pick the filetype at random
-            if (m_rng.getFromRange(0, 1) == 1)
+            uint64_t randomFileType = m_rng.getFromRange(0, 2);
+            if (randomFileType == 1)
                 fileExtension = ".txt";
+            else if (randomFileType == 2)
+                fileExtension = ".sprs";
             else
                 fileExtension = ".bin";
         }
         else if (parameters.getFlag("filetype") == "text")
             fileExtension = ".txt";
+        else if (parameters.getFlag("filetype") == "sparse")
+            fileExtension = ".sprs";
         else
             fileExtension = ".bin";
 
@@ -150,6 +155,17 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         else
         {
             //Binary file. Write random bytes out until the exact size is reached.
+            if (file.relativePathname().extension() == ".sprs")
+            {
+                //A sparse file is a binary file that has lot of empty space. In order to create it,
+                //we start writing at an arbitrary point more than halfway into the file.
+                uint64_t halfwayPoint = size/2;
+                if (halfwayPoint < MINIMUM_FILE_SIZE)
+                    halfwayPoint = MINIMUM_FILE_SIZE;
+                uint64_t startPoint = rng.getFromRange(halfwayPoint, size-1);
+                outFile.seekp(startPoint);
+                writtenSoFar = startPoint;
+            }
             vector<uint8_t> buffer(BUFFER_SIZE);
             while (writtenSoFar < size)
             {
