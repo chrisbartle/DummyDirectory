@@ -61,6 +61,9 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
         file.setRelativePathname(directory.relativePath() / filename);
         //Come up with the file's size
         uint64_t fileSize = m_rng.processFlag(parameters.getFlag("filesize"), m_manifest.getTotalSize());
+        uint64_t fileSeed = m_rng.get64();
+        if (parameters.isFlag("fileseed"))
+            fileSeed = m_rng.processFlag(parameters.getFlag("fileseed"));
         //See if there's a total size limit to enforce here
         if (parameters.isFlag("size"))
         {
@@ -73,7 +76,7 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
         }
         file.setProcessingStatus(DDFile::QUEUED);
 
-        DoFileOperation(file, parameters, m_rng.get64(), fileSize);
+        DoFileOperation(file, parameters, fileSeed, fileSize);
 
         //Increment
         sizeSoFar += fileSize;

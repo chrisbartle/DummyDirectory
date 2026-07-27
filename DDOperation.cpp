@@ -293,6 +293,19 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
         return "";
     }
 
+    if (inFlag == "fileseed")
+    {
+        if ((inOperation != "add") && (inOperation != "modify"))
+            return "fileseed can only be set for add and modify operations";
+        try {
+            DDDeterministicPCGPRNG tempRNG;
+            tempRNG.convertStringToNumber(inFlagValue);
+        } catch (...) {
+            return "Can not parse fileseed flag " + inFlag;
+        }
+        return "";
+    }
+
     if (inFlag == "modifytype")
     {
         if (inOperation != "modify")

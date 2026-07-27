@@ -48,6 +48,8 @@ OPTIONS:
                          25%), or a range to pick randomly from (e.g. 1k-10m).
     --count=<value>      Total number of items (files or directories) the operation should
                          affect. Accepts the same percentage/range rules as --size.
+    --fileseed=<value>   A numerical value that acts as a seed for file add and modify operations.
+                         Files with identical seeds will be identical. Ranges may be used.
     --filesize=<value>   For "add", the size of each new file. For "modify", how much of each
                          file's content to change. Same value rules as --size.
     --filetype=<type>    For "add" only: random, binary, or text. Default: random.

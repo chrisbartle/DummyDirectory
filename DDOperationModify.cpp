@@ -81,8 +81,11 @@ void DDOperationModify::ChildDoOperation(DDParameters &parameters)
                 fileChangeSize = m_targetSize-sizeSoFar;
             sizeSoFar += fileChangeSize;
             countSoFar++;
+            uint64_t fileSeed = m_rng.get64();
+            if (parameters.isFlag("fileseed"))
+                fileSeed = m_rng.processFlag(parameters.getFlag("fileseed"));
             file.setProcessingStatus(DDFile::QUEUED);
-            DoFileOperation(file, parameters, m_rng.get64(), fileChangeSize);
+            DoFileOperation(file, parameters, fileSeed, fileChangeSize);
         }
         // Jump forward by the stride and wrap around using modulo
         filePos = (filePos + stride) % totalFileCount;
