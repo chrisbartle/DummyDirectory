@@ -155,6 +155,7 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         else
         {
             //Binary file. Write random bytes out until the exact size is reached.
+            vector<uint8_t> buffer(BUFFER_SIZE);
             if (file.relativePathname().extension() == ".sprs")
             {
                 //A sparse file is a binary file that has lot of empty space. In order to create it,
@@ -163,10 +164,18 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
                 if (halfwayPoint < MINIMUM_FILE_SIZE)
                     halfwayPoint = MINIMUM_FILE_SIZE;
                 uint64_t startPoint = rng.getFromRange(halfwayPoint, size-1);
+                //Run the md5 hasher on null data
+                while (writtenSoFar < startPoint)
+                {
+                    uint64_t bufferSize = BUFFER_SIZE;
+                    if (writtenSoFar + bufferSize > startPoint)
+                        bufferSize = startPoint-writtenSoFar;
+                    hasher.update(reinterpret_cast<const char*>(buffer.data()), bufferSize);
+                    writtenSoFar += bufferSize;
+                    m_processedSize += bufferSize;
+                }
                 outFile.seekp(startPoint);
-                writtenSoFar = startPoint;
             }
-            vector<uint8_t> buffer(BUFFER_SIZE);
             while (writtenSoFar < size)
             {
                 uint64_t bufferSize = BUFFER_SIZE;
