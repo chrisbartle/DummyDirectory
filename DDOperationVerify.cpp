@@ -35,33 +35,37 @@ void DDOperationVerify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
         if (!std::filesystem::exists(absolutePathname))
         {
             file.setProcessingStatus(DDFile::MISSING);
-            return;
         }
-
-        //Open the file
-        std::ifstream inFile(absolutePathname, std::ios::binary);
-
-        //Iterate through the file data and build the hash
-        DDMD5Hasher hasher;
-        char buffer[BUFFER_SIZE];
-        inFile.read(buffer, BUFFER_SIZE);
-        while (inFile.gcount() > 0)
-        {
-            hasher.update(buffer, inFile.gcount());
-            m_processedSize += inFile.gcount();
-            inFile.read(buffer, BUFFER_SIZE);
-        }
-
-        //Finalize the hash
-        std::string thisHash = hasher.finalize();
-
-        if (thisHash != file.hash())
-            //The hashes are different
+        //The file sizes must match
+        else if (std::filesystem::file_size(absolutePathname) != file.size())
             file.setProcessingStatus(DDFile::DIFFERENT);
         else
-            file.setProcessingStatus(DDFile::COMPLETE);
+        {
+            //Open the file
+            std::ifstream inFile(absolutePathname, std::ios::binary);
 
-        inFile.close();
+            //Iterate through the file data and build the hash
+            DDMD5Hasher hasher;
+            char buffer[BUFFER_SIZE];
+            inFile.read(buffer, BUFFER_SIZE);
+            while (inFile.gcount() > 0)
+            {
+                hasher.update(buffer, inFile.gcount());
+                m_processedSize += inFile.gcount();
+                inFile.read(buffer, BUFFER_SIZE);
+            }
+
+            //Finalize the hash
+            std::string thisHash = hasher.finalize();
+
+            if (thisHash != file.hash())
+                //The hashes are different
+                file.setProcessingStatus(DDFile::DIFFERENT);
+            else
+                file.setProcessingStatus(DDFile::COMPLETE);
+
+            inFile.close();
+        }
         m_processedCount++;
     }
     catch (const std::exception& e) {

@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
                 {
                     differentCount++;
                     if (mainParameters.isFlag("verbose"))
-                        cout << thisFile.relativePathname().string() << " has a different hash!" << endl;
+                        cout << thisFile.relativePathname().string() << " is different!" << endl;
                 }
             }
             if ((missingCount == 0) && (differentCount == 0) && (errorCount == 0))
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
                 if (missingCount > 0)
                     cout << missingCount << " files listed on the manifest are missing from the file system" << endl;
                 if (differentCount > 0)
-                    cout << differentCount << " files have a different hash" << endl;
+                    cout << differentCount << " files have a different hash or file size" << endl;
                 if (errorCount > 0)
                     cout << errorCount << " files could not be processed due to an error" << endl;
                 if (!mainParameters.isFlag("verbose"))
