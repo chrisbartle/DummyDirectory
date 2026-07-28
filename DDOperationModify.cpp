@@ -166,6 +166,13 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             //The start point needs to be greater than the minimum but still provide room to write
             //The file size should not change
             uint64_t startPos = rng.getFromRange(MINIMUM_FILE_SIZE, file.size()-size-1);
+            if (size > file.size() - MINIMUM_FILE_SIZE)
+            {
+                //Special case, we're trying to overwrite more than we can. In this situation
+                //start at the minimum and overwrite the rest
+                size = file.size() - MINIMUM_FILE_SIZE;
+                startPos = MINIMUM_FILE_SIZE;
+            }
             readFile(existingFile, hasher, startPos);
             existingFile.clear();
             existingFile.seekp(existingFile.tellg());
@@ -185,11 +192,13 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             filesystem::path absoluteTempPathname = absolutePathname;
             absoluteTempPathname.replace_filename(tempFilename);
             fstream tempFile(absoluteTempPathname, std::ios::out | std::ios::binary );//| std::ios::trunc);
+            if (size > file.size()-MINIMUM_FILE_SIZE)
+                size = file.size()-MINIMUM_FILE_SIZE;
             uint64_t startPos = rng.getFromRange(MINIMUM_FILE_SIZE, file.size()-size);
             copyFile(existingFile, tempFile, hasher, startPos);
             uint64_t endPos = startPos + size;
             existingFile.seekg(endPos);
-            copyFile(existingFile, tempFile, hasher, file.size() - endPos + 1);
+            copyFile(existingFile, tempFile, hasher, file.size() - endPos);
             existingFile.close();
             tempFile.close();
             filesystem::remove(absolutePathname);
@@ -255,7 +264,10 @@ void DDOperationModify::readFile(fstream &inFile, DDMD5Hasher &hasher, uint64_t 
     uint64_t totalBytesRead = 0;
     while ((totalBytesRead < size) && !inFile.eof())
     {
-        inFile.read(buffer, BUFFER_SIZE);
+        uint64_t bufferSize = BUFFER_SIZE;
+        if (totalBytesRead + bufferSize > size)
+            bufferSize = size-totalBytesRead;
+        inFile.read(buffer, bufferSize);
         hasher.update(buffer, inFile.gcount());
         totalBytesRead += inFile.gcount();
     }
