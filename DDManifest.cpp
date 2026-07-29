@@ -33,7 +33,7 @@ bool DDManifest::LoadFromFile()
         return false;
 
     //Open a stream and start reading
-    std::ifstream manifestFile(m_absoluteManifestPath);
+    std::ifstream manifestFile(m_absoluteManifestPath, std::ios::binary);
     if (!manifestFile.is_open())
     {
         std::error_code ec = std::make_error_code(std::errc::no_such_file_or_directory);
@@ -107,7 +107,7 @@ void DDManifest::SaveToFile()
     });
 
     //Open a stream and start writing
-    std::ofstream manifestFile(m_absoluteManifestPath, std::ios::trunc);
+    std::ofstream manifestFile(m_absoluteManifestPath, std::ios::trunc | std::ios::binary);
     if (!manifestFile.is_open())
     {
         std::error_code ec = std::make_error_code(std::errc::no_such_file_or_directory);
