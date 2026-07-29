@@ -269,6 +269,8 @@ int main(int argc, char *argv[])
             //Save the new manifest
             manifest.SaveToFile();
         }
+        if (!manifest.isEmpty())
+            cout << "Manifest hash is " << manifest.ComputeManifestHash() << endl;
     }
     catch (const std::exception& e) {
         std::cerr << "Critical Error (std::exception): " << e.what() << std::endl;

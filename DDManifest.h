@@ -20,10 +20,12 @@ public:
     void SaveToFile();
     void PostOperationCleanup();
     std::string GetManifestSummation();
+    std::string ComputeManifestHash();
 
     uint64_t getTotalSize() { return m_totalSize; };
     uint64_t getTotalFileCount() { return m_files.size(); };
     uint64_t getTotalDirectoryCount() { return m_directories.size(); };
+    bool isEmpty() { return ((m_files.size() == 0) && (m_directories.size() <= 1)); };
 
     DDFile& getFileByPos(uint64_t inPos) { return *(m_files[inPos]); };
     DDFile& addFile() { m_files.emplace_back(std::make_unique<DDFile>()); return *(m_files.back()); };

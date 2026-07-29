@@ -8,6 +8,8 @@
 #include <iomanip>
 
 #include "cmake_vals.h"
+#include "DDMD5Hasher.h"
+#include "DDOperation.h"
 
 using namespace std;
 
@@ -90,7 +92,7 @@ void DDManifest::SaveToFile()
 {
     //If there are no directories or files then not only do we not want to write out a file but
     //we want to delete any prior manifest file.
-    if ((m_directories.size() <= 1) && (m_files.size() == 0) && std::filesystem::exists(m_absoluteManifestPath))
+    if (isEmpty() && std::filesystem::exists(m_absoluteManifestPath))
     {
         std::filesystem::remove(m_absoluteManifestPath);
         return;
@@ -166,6 +168,28 @@ void DDManifest::PostOperationCleanup()
     m_totalSize = totalFileSize;
 }
 
+/**
+ * @brief DDManifest::ComputeManifestHash
+ * Computes the MD5 hash of the manifest file (and thus the entire directory tree) and returns it
+ * @return MD5 hash as a string
+ */
+string DDManifest::ComputeManifestHash()
+{
+    //Open the file
+    std::ifstream inFile(m_absoluteManifestPath, std::ios::binary);
+
+    //Iterate through the file data and build the hash
+    DDMD5Hasher hasher;
+    char buffer[DDOperation::BUFFER_SIZE];
+    inFile.read(buffer, DDOperation::BUFFER_SIZE);
+    while (inFile.gcount() > 0)
+    {
+        hasher.update(buffer, inFile.gcount());
+        inFile.read(buffer, DDOperation::BUFFER_SIZE);
+    }
+    return hasher.finalize();
+}
+
 DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint64_t inMaxDepth)
 {
     //If the max depth is 0 then the only answer is the root directory
@@ -202,6 +226,11 @@ DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint6
     return *(m_directories[0]);
 }
 
+/**
+ * @brief DDManifest::GetManifestSummation
+ * A short string that describes the files/directories/size of the current manifest
+ * @return String description
+ */
 string DDManifest::GetManifestSummation()
 {
     string summation;
