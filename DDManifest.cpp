@@ -4,6 +4,8 @@
 #include <numeric>
 #include <algorithm>
 #include <format>
+#include <sstream>
+#include <iomanip>
 
 #include "cmake_vals.h"
 
