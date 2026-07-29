@@ -13,7 +13,7 @@
 class DDOperation
 {
 public:
-    static constexpr size_t BUFFER_SIZE = 4096;
+    static constexpr size_t BUFFER_SIZE = 65536;
     static constexpr size_t MINIMUM_FILE_SIZE = 15;
 
     DDOperation(DDManifest &inManifest);

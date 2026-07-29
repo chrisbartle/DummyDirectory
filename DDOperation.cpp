@@ -143,7 +143,10 @@ void DDOperation::DoFileOperation(DDFile &file, DDParameters &parameters, uint64
 {
     //If user has set the number of threads to 0 or 1 then just run the file operation in this thread
     if (parameters.isFlag("threads") && stoul(parameters.getFlag("threads")) < 2)
+    {
         ChildDoFileOperation(file, parameters, seed, size);
+        return;
+    }
 
     //Has the thread pool been initialized? We initialize it only when needed since it will create
     //multiple threads.
