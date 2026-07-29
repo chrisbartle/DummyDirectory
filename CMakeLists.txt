@@ -29,6 +29,7 @@ add_executable(dummydir main.cpp
     DDOperationDeleteDirectory.cpp DDOperationDeleteDirectory.h
     DDOperationMoveDirectory.cpp DDOperationMoveDirectory.h
 )
+target_link_libraries(dummydir PRIVATE Threads::Threads)
 
 # We want to make the build timestamp available
 string(TIMESTAMP BUILD_TIMESTAMP "%m/%d/%Y %H:%M:%S")
