@@ -5,7 +5,7 @@
 #include "DDParameters.h"
 #include "DDManifest.h"
 #include "DDOperation.h"
-
+#include "DDReplay.h"
 
 
 using namespace std;
@@ -169,14 +169,21 @@ int main(int argc, char *argv[])
             cout << manifest.GetManifestSummation() << endl;
         }
 
+        //Set up the replay file
+        DDReplay replay;
+        std::filesystem::path absoluteReplayPath = absoluteDirectoryPath / "DummyDir.replay";
+        replay.SetFilepath(absoluteReplayPath);
+
         //Perform the operation
         unique_ptr<DDOperation> operation = DDOperation::getOperationByName(mainParameters.getOperation(), manifest);
         operation->SetDefaultParameters(mainParameters);
         operation->setStatusCallbackFunction(statusCallback);
         cout << "Processing..." << endl;
+        replay.WriteOperation(mainParameters);
         operation->DoOperation(mainParameters);
         //Use a carriage return to clear the percentage indicator
         cout << "\r" << operation->GetOperationSummation() << endl;
+        replay.WriteComment(operation->GetOperationSummation());
 
         //Look for errors
         if (mainParameters.getOperation() == "verify")
@@ -247,7 +254,10 @@ int main(int argc, char *argv[])
                 if (conflictCount > 0)
                     cout << conflictCount << " files could not be added because the file already existed" << endl;
                 if (errorCount > 0)
+                {
                     cout << errorCount << " files could not be processed due to an error" << endl;
+                    replay.WriteComment("Errors detected!");
+                }
                 if (!mainParameters.isFlag("verbose"))
                     cout << "Re-run with --verbose flag to get a list of specific files" << endl;
             }
@@ -264,13 +274,18 @@ int main(int argc, char *argv[])
             {
                 cout << "Processing complete!" << endl;
                 cout << manifest.GetManifestSummation() << endl;
+                replay.WriteComment(manifest.GetManifestSummation());
             }
 
             //Save the new manifest
             manifest.SaveToFile();
         }
         if (!manifest.isEmpty())
-            cout << "Manifest hash is " << manifest.ComputeManifestHash() << endl;
+        {
+            string hashMessage = "Manifest hash is " + manifest.ComputeManifestHash();
+            cout << hashMessage << endl;
+            replay.WriteComment(hashMessage);
+        }
     }
     catch (const std::exception& e) {
         std::cerr << "Critical Error (std::exception): " << e.what() << std::endl;

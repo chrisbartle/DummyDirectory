@@ -28,6 +28,7 @@ add_executable(dummydir main.cpp
     DDOperationRenameDirectory.h DDOperationRenameDirectory.cpp
     DDOperationDeleteDirectory.cpp DDOperationDeleteDirectory.h
     DDOperationMoveDirectory.cpp DDOperationMoveDirectory.h
+    DDReplay.h DDReplay.cpp
 )
 target_link_libraries(dummydir PRIVATE Threads::Threads)
 

@@ -23,6 +23,8 @@ public:
     std::filesystem::path getAbsoluteDirectoryPath() {return std::filesystem::absolute(getDirectoryPath()).lexically_normal(); }
     std::filesystem::path ConvertToAbsolutePath(std::filesystem::path inPath) {return getAbsoluteDirectoryPath() / inPath; }
 
+    std::unordered_map<std::string, std::string> &getFlagMap() { return m_flags; }
+
 private:
     std::unordered_map<std::string, std::string> m_flags;
     std::vector<std::string> m_arguments;
