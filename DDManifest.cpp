@@ -139,18 +139,17 @@ void DDManifest::SaveToFile()
 void DDManifest::PostOperationCleanup()
 {
     //Remove deleted directories
-    erase_if(m_directories, [](const unique_ptr<DDDirectory>& d) { return d->processingStatus() == DDDirectory::DELETED; });
+    erase_if(m_directories, [](const unique_ptr<DDDirectory>& d) { return ((d->processingStatus() == DDDirectory::DELETED) || (d->processingStatus() == DDDirectory::CONFLICT)); });
 
     //Clean up the directory errors
     for (const auto& directory : m_directories)
     {
         if (directory->processingStatus() != DDDirectory::NONE)
             directory->setProcessingStatus(DDDirectory::NONE);
-        directory->recordProcessingError("");
     }
 
     //Remove deleted files
-    erase_if(m_files, [](const unique_ptr<DDFile>& d) { return d->processingStatus() == DDFile::DELETED; });
+    erase_if(m_files, [](const unique_ptr<DDFile>& d) { return ((d->processingStatus() == DDFile::DELETED) || (d->processingStatus() == DDFile::CONFLICT) || (d->processingStatus() == DDFile::MISSING)); });
 
     uint64_t totalFileSize = 0;
     //Iterate through the files
