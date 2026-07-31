@@ -99,12 +99,7 @@ void DDManifest::SaveToFile()
     }
 
     //Sort the vectors. We do this to guarantee that every manifest file is identical
-    sort(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
-        return a->relativePath() < b->relativePath();
-    });
-    sort(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
-        return a->relativePathname() < b->relativePathname();
-    });
+    Sort();
 
     //Open a stream and start writing
     std::ofstream manifestFile(m_absoluteManifestPath, std::ios::trunc | std::ios::binary);
@@ -166,6 +161,19 @@ void DDManifest::PostOperationCleanup()
         totalFileSize += file->size();
     }
     m_totalSize = totalFileSize;
+    //Sort proactively because some operations rely on the sort order
+    Sort();
+}
+
+void DDManifest::Sort()
+{
+    //Sort both files and directories so they are in order
+    sort(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
+        return a->relativePath() < b->relativePath();
+    });
+    sort(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
+        return a->relativePathname() < b->relativePathname();
+    });
 }
 
 /**

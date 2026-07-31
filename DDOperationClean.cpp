@@ -5,6 +5,9 @@ using namespace std;
 
 void DDOperationClean::ChildDoOperation(DDParameters &parameters)
 {
+    //This operation expects the manifest to be sorted
+    m_manifest.Sort();
+
     //Set expectations
     m_targetCount = m_manifest.getTotalFileCount();
     m_targetCount += m_manifest.getTotalDirectoryCount();

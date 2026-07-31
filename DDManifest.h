@@ -19,6 +19,7 @@ public:
     bool LoadFromFile();
     void SaveToFile();
     void PostOperationCleanup();
+    void Sort();
     std::string GetManifestSummation();
     std::string ComputeManifestHash();
 

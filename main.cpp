@@ -64,7 +64,7 @@ OPTIONS:
                          reproduced later.
     --verbose            Print details about every individual error, conflict, or discrepancy
                          found, instead of just a summary count. Shorthand: -v
-    --replay             Reserved for future use.
+    --replay             Execute the operations, in order, from the provided replay file
     --help               Show this help message and exit.
 
     Shorthand: -s = --size, -c = --count, -v = --verbose
@@ -130,7 +130,10 @@ int main(int argc, char *argv[])
                 intakeReplayFileAbsolutePath = std::filesystem::absolute(replayFlag).lexically_normal();
             }
             else
-                intakeReplayFileAbsolutePath = mainReplayFileAbsolutePath;
+            {
+                cout << "Please specify a replay file" << endl;
+                return 1;
+            }
             //Make sure the replay file exists
             if (!std::filesystem::is_regular_file(intakeReplayFileAbsolutePath))
             {
@@ -172,6 +175,23 @@ int main(int argc, char *argv[])
             {
                 DDParameters operationParameters;
                 operationParameters.LoadFromReplay(operationString, mainParameters.getAbsoluteDirectoryPath());
+                //Make sure this is a valid operation
+                string operationValidation = DDOperation::ValidateOperationType(operationParameters.getOperation());
+                if (operationValidation.length() > 0)
+                {
+                    cout << operationValidation << ", skipped operation" << endl;
+                    continue;
+                }
+                //Validate the flags and make sure that they're valid
+                string flagValidation = operationParameters.validateFlags();
+                if (flagValidation.length() > 0)
+                {
+                    cout << flagValidation << ", skipped operation" << endl;
+                    continue;
+                }
+                //Copy over current parameters
+                if (mainParameters.isFlag("threads"))
+                    operationParameters.setFlag("threads", mainParameters.getFlag("threads"));
                 //Perform the operation
                 unique_ptr<DDOperation> operation = DDOperation::getOperationByName(operationParameters.getOperation(), manifest);
                 operation->SetDefaultParameters(operationParameters);
@@ -180,10 +200,43 @@ int main(int argc, char *argv[])
                 replay.WriteOperation(operationParameters);
                 operation->DoOperation(operationParameters);
                 //Use a carriage return to clear the percentage indicator
-                cout << "\r" << endl;
+                cout << "\r";
+                //Check for errors
+                uint64_t errorCount = 0;
+                uint64_t conflictCount = 0;
+                for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
+                {
+                    DDFile& thisFile = manifest.getFileByPos(eloop);
+                    if (thisFile.processingStatus() == DDFile::ERROR)
+                    {
+                        errorCount++;
+                        if (mainParameters.isFlag("verbose"))
+                            cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
+                    }
+                    else if (thisFile.processingStatus() == DDFile::CONFLICT)
+                    {
+                        conflictCount++;
+                        if (mainParameters.isFlag("verbose"))
+                            cout << thisFile.relativePathname().string() << " could not be added due to an existing file with the same name" << endl;
+                    }
+                }
+                if ((errorCount > 0) || (conflictCount > 0))
+                {
+                    if (conflictCount > 0)
+                        cout << conflictCount << " files could not be added because the file already existed" << endl;
+                    if (errorCount > 0)
+                    {
+                        cout << errorCount << " files could not be processed due to an error" << endl;
+                        replay.WriteComment("Errors detected!");
+                    }
+                    if (!mainParameters.isFlag("verbose"))
+                        cout << "Re-run with --verbose flag to get a list of specific files" << endl;
+                }
+                //Write out information to the replay file
                 replay.WriteComment(operation->GetOperationSummation());
                 manifest.PostOperationCleanup();
                 replay.WriteComment(manifest.GetManifestSummation());
+                manifest.SaveToFile(); //Need to do this in order to compute the hash
                 string hashMessage = "Manifest hash is " + manifest.ComputeManifestHash();
                 replay.WriteComment(hashMessage);
             }
