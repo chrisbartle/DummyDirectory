@@ -50,6 +50,41 @@ void DDParameters::LoadFromCommandLine(int argc, char* argv[])
 }
 
 /**
+ * @brief DDParameters::LoadFromReplay
+ * Replay files contain the operation and all flags on a single line. This procedure will parse it.
+ * @param inReplayOperation The operation string. The first token is the operation name followed by flags in the form --x=y
+ * @param inAbsoluteDirectoryPath The absolute path to the target directory. This is passed in seperately because the path may contain
+ * spaces that are hard to parse.
+ */
+void DDParameters::LoadFromReplay(std::string inReplayOperation, std::filesystem::path inAbsoluteDirectoryPath)
+{
+    stringstream operationSS(inReplayOperation);
+    string arg;
+    while (operationSS >> arg)
+    {
+        // Check if it's an option (starts with '-')
+        if (arg[0] == '-') {
+            // Handle standard key=value syntax (e.g., --output=dir)
+            size_t equals_pos = arg.find('=');
+            if (equals_pos != std::string::npos) {
+                std::string key = arg.substr(0, equals_pos);
+                std::string val = arg.substr(equals_pos + 1);
+                setFlag(key, val);
+            }
+            // It's a standalone boolean flag (e.g., --verbose)
+            else {
+                setFlag(arg, "");
+            }
+        }
+        // If it doesn't start with '-', process it immediately as an argument!
+        else {
+            m_arguments.push_back(arg);
+        }
+    }
+    m_absoluteDirectoryPath = inAbsoluteDirectoryPath;
+}
+
+/**
  * @brief DDParameters::isFlag
  * Returns true if the command line flag exists (flags start with - or -- and may be set to a value)
  * @param inFlagName Name of the flag with dashes removed
@@ -144,10 +179,25 @@ std::string DDParameters::getDirectoryPath()
     if (isFlag("replay"))
     {
         if (m_arguments.size() == 0)
-            return "";
+        {
+            //If the user entered something like:
+            //dummydir --replay dddir
+            //Then the directory is inside the flag
+            return getFlag("replay");
+        }
         return m_arguments[0];
     }
     if (m_arguments.size() < 2)
         return "";
     return m_arguments[1];
+}
+
+/**
+ * @brief DDParameters::getAbsoluteDirectoryPath
+ * @return The absolute version of the directory path
+ */
+std::filesystem::path DDParameters::getAbsoluteDirectoryPath() {
+    if (!m_absoluteDirectoryPath.empty())
+        return m_absoluteDirectoryPath;
+    return std::filesystem::absolute(getDirectoryPath()).lexically_normal();
 }

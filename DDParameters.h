@@ -12,6 +12,7 @@ public:
     DDParameters();
 
     void LoadFromCommandLine(int argc, char* argv[]);
+    void LoadFromReplay(std::string inReplayOperation, std::filesystem::path inAbsoluteDirectoryPath);
 
     bool isFlag(std::string inFlagName);
     std::string getFlag(std::string inFlagName);
@@ -20,7 +21,7 @@ public:
 
     std::string getOperation();
     std::string getDirectoryPath();
-    std::filesystem::path getAbsoluteDirectoryPath() {return std::filesystem::absolute(getDirectoryPath()).lexically_normal(); }
+    std::filesystem::path getAbsoluteDirectoryPath();
     std::filesystem::path ConvertToAbsolutePath(std::filesystem::path inPath) {return getAbsoluteDirectoryPath() / inPath; }
 
     std::unordered_map<std::string, std::string> &getFlagMap() { return m_flags; }
@@ -28,6 +29,7 @@ public:
 private:
     std::unordered_map<std::string, std::string> m_flags;
     std::vector<std::string> m_arguments;
+    std::filesystem::path m_absoluteDirectoryPath;
 };
 
 #endif // DDPARAMETERS_H

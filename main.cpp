@@ -116,6 +116,82 @@ int main(int argc, char *argv[])
             //*no operation needs to be specified
             //*the replay flag may or may not include the replay file
             // if it's not there then the replay file is in the dummy directory
+            if (mainParameters.getDirectoryPath().empty())
+            {
+                cout << "A valid directory path must be provided." << endl;
+                return 1;
+            }
+            string replayFlag = mainParameters.getFlag("replay");
+            filesystem::path mainReplayFileAbsolutePath = mainParameters.getAbsoluteDirectoryPath() / "DummyDir.replay";
+            filesystem::path intakeReplayFileAbsolutePath;
+            if (!replayFlag.empty() && (replayFlag != mainParameters.getDirectoryPath()))
+            {
+                //The user has provided a different location for the replay flag than the target directory
+                intakeReplayFileAbsolutePath = std::filesystem::absolute(replayFlag).lexically_normal();
+            }
+            else
+                intakeReplayFileAbsolutePath = mainReplayFileAbsolutePath;
+            //Make sure the replay file exists
+            if (!std::filesystem::is_regular_file(intakeReplayFileAbsolutePath))
+            {
+                cout << "A replay file could not be found at " << intakeReplayFileAbsolutePath.string() << endl;
+                return 1;
+            }
+            //Create the target directory if it doesn't exist
+            if (!std::filesystem::exists(mainParameters.getAbsoluteDirectoryPath()))
+            {
+                //It does not exist so create it
+                if (!std::filesystem::create_directories(mainParameters.getAbsoluteDirectoryPath()))
+                {
+                    cout << "The provided path:" << endl << mainParameters.getAbsoluteDirectoryPath() << endl;
+                    cout << "does not exist and could not be created." << endl;
+                    return 1;
+                }
+                cout << mainParameters.getAbsoluteDirectoryPath() << " was created." << endl;
+            }
+            //Setup the manifest
+            DDManifest manifest;
+            manifest.SetFilepath(mainParameters.getAbsoluteDirectoryPath() / "DummyDir.manifest");
+            manifest.LoadFromFile();
+            //Setup the main replay file that exists in the target directory
+            DDReplay replay;
+            replay.SetFilepath(mainReplayFileAbsolutePath);
+            vector<string> replayOperations;
+            if (intakeReplayFileAbsolutePath == mainReplayFileAbsolutePath)
+                replayOperations = replay.ReadOperations();
+            else
+            {
+                //Open a different replay file
+                DDReplay intakeReplay;
+                intakeReplay.SetFilepath(intakeReplayFileAbsolutePath);
+                replayOperations = intakeReplay.ReadOperations();
+            }
+            //We load all of the operations into memory because, going forward, we might be writing
+            //out to the same replay file. We iterate through the operations here:
+            for (const string &operationString : replayOperations)
+            {
+                DDParameters operationParameters;
+                operationParameters.LoadFromReplay(operationString, mainParameters.getAbsoluteDirectoryPath());
+                //Perform the operation
+                unique_ptr<DDOperation> operation = DDOperation::getOperationByName(operationParameters.getOperation(), manifest);
+                operation->SetDefaultParameters(operationParameters);
+                operation->setStatusCallbackFunction(statusCallback);
+                cout << operationString << endl;
+                replay.WriteOperation(operationParameters);
+                operation->DoOperation(operationParameters);
+                //Use a carriage return to clear the percentage indicator
+                cout << "\r" << endl;
+                replay.WriteComment(operation->GetOperationSummation());
+                manifest.PostOperationCleanup();
+                replay.WriteComment(manifest.GetManifestSummation());
+                string hashMessage = "Manifest hash is " + manifest.ComputeManifestHash();
+                replay.WriteComment(hashMessage);
+            }
+            manifest.SaveToFile();
+            cout << "Replay processing complete!" << endl;
+            cout << manifest.GetManifestSummation() << endl;
+            cout << "Manifest hash is " << manifest.ComputeManifestHash() << endl;
+            return 0;
         }
 
         //Make sure there is an operation specified

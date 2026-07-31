@@ -14,8 +14,7 @@ DDReplay::DDReplay()
 
 DDReplay::~DDReplay()
 {
-    if (m_replayFileWriter.is_open())
-        m_replayFileWriter.close();
+    CloseForWrite();
 }
 
 /**
@@ -75,6 +74,43 @@ void DDReplay::WriteComment(std::string inComment)
     m_replayFileWriter << "# " << outComment << endl;
 }
 
+std::vector<string> DDReplay::ReadOperations()
+{
+    vector<string> operationList;
+
+    //We don't want it open for writing as we're about to read from it
+    CloseForWrite();
+
+    //If file doesn't exist then nothing to load
+    if (!std::filesystem::is_regular_file(m_absoluteReplayPath))
+        return operationList;
+
+    //Open a stream and start reading
+    std::ifstream inReplayFile(m_absoluteReplayPath, std::ios::binary);
+
+    //Loop through all of the lines
+    std::string lineString;
+    uint64_t lineNumber = 0;
+    while (std::getline(inReplayFile, lineString))
+    {
+        lineNumber++;
+        try
+        {
+            //Any line that starts with a # should be ignored.
+            if (lineString.empty() || lineString.starts_with('#'))
+                continue;
+            operationList.push_back(lineString);
+        }
+        catch(...)
+        {
+            throw std::runtime_error("Unable to read line " + std::to_string(lineNumber) + " in " + m_absoluteReplayPath.string());
+        }
+    }
+    inReplayFile.close();
+
+    return operationList;
+}
+
 void DDReplay::OpenForWrite()
 {
     if (m_replayFileWriter.is_open())
@@ -91,4 +127,10 @@ void DDReplay::OpenForWrite()
         m_replayFileWriter << "# Dummy Directory replay file" << endl;
         m_replayFileWriter << "# Version " << APP_VERSION_STRING << endl;
     }
+}
+
+void DDReplay::CloseForWrite()
+{
+    if (m_replayFileWriter.is_open())
+        m_replayFileWriter.close();
 }

@@ -68,7 +68,7 @@ std::unique_ptr<DDOperation> DDOperation::getOperationByName(std::string inOpera
         return std::make_unique<DDOperationClean>(inManifest);
     else if (inOperation == "rebuild")
         return std::make_unique<DDOperationRebuild>(inManifest);
-    throw runtime_error("Unknown operation " + inOperation);
+    throw runtime_error("Unknown type of DummyDir operation " + inOperation);
 }
 
 
