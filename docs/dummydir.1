@@ -84,7 +84,7 @@ Shorthand:
 .TP
 .BI \-\-fileseed = value
 A numerical value that acts as a seed for file add and modify operations.
-Files with identical seeds will be identical. Ranges may be used.
+Files with identical seeds will have identical data. Ranges may be used.
 .TP
 .BI \-\-filesize = value
 For
@@ -169,7 +169,7 @@ performed against it, in the exact form needed to reproduce the run with
 .BR \-\-replay .
 .SH EXAMPLES
 .TP
-Add roughly 500 megabytes of new files, each between 10 and 20 megabytes:
+Add 500 megabytes of new files, each between 10 and 20 megabytes:
 .B dummydir add ./mydir \-\-size=500M \-\-filesize=10M\-20M
 .TP
 Delete 25% of the files currently in the directory:
