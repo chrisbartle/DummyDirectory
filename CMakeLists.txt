@@ -49,6 +49,18 @@ configure_file(
 )
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 
+# Generate an rc file with the version information filled in by cmake
+set(APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/windows/DD.ico")
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/windows/DD.rc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/DD.rc
+    @ONLY
+)
+
+if(WIN32)
+    target_sources(dummydir PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/DD.rc)
+endif()
+
 include(GNUInstallDirs)
 install(TARGETS dummydir
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
