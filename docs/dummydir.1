@@ -1,0 +1,202 @@
+.TH DUMMYDIR 1 "2026-08-03" "DummyDir 0.9.0" "User Commands"
+.SH NAME
+dummydir \- generate and manipulate a directory tree of files for testing purposes
+.SH SYNOPSIS
+.B dummydir
+.I operation directory
+.RI [ options ]
+.br
+.B dummydir
+.RB [ \-\-replay = replay-file ]
+.I directory
+.SH DESCRIPTION
+.B dummydir
+(DummyDir) generates and manipulates a directory tree of files for testing
+purposes. It uses a deterministic, seedable pseudo-random number generator,
+so a run can be reproduced exactly later from its recorded seed.
+.PP
+Every dummy directory maintains a manifest file,
+.BR DummyDir.manifest ,
+in its root, which tracks the files and subdirectories that
+.B dummydir
+created and is responsible for. Operations only ever add, modify, or remove
+items recorded in this manifest; files and directories not created by
+.B dummydir
+are never touched, even if they live inside the target directory.
+.PP
+Every run is also logged to a replay file,
+.BR DummyDir.replay ,
+in the root of the target directory. This file records each operation and
+the flags (including the random seed) it was invoked with, so the exact
+sequence of operations can be reproduced later with
+.BR \-\-replay .
+.SH OPERATIONS
+.TP
+.B add
+Add new files to the dummy directory.
+.TP
+.B delete
+Delete existing files from the dummy directory.
+.TP
+.B modify
+Modify the contents of existing files.
+.TP
+.B rename
+Rename existing files.
+.TP
+.B move
+Move existing files to a different directory.
+.TP
+.B dadd
+Add new subdirectories.
+.TP
+.B drename
+Rename existing subdirectories.
+.TP
+.B dmove
+Move existing subdirectories to a different parent directory.
+.TP
+.B ddelete
+Delete existing subdirectories, along with everything inside them.
+.TP
+.B clean
+Remove every file and directory this tool has created.
+.TP
+.B verify
+Check that every file on disk matches what the manifest recorded.
+.TP
+.B rebuild
+Rebuild the manifest from what is actually present on disk.
+.SH OPTIONS
+.TP
+.BI \-\-size = value
+Total number of bytes the operation should affect. Accepts K/M/G/T/P/E
+suffixes (e.g.\& 500M, 2.5G), a percentage of the relevant total (e.g.\&
+25%), or a range to pick randomly from (e.g.\& 1k\-10m). Shorthand:
+.BR \-s .
+.TP
+.BI \-\-count = value
+Total number of items (files or directories) the operation should affect.
+Accepts the same percentage and range rules as
+.BR \-\-size .
+Shorthand:
+.BR \-c .
+.TP
+.BI \-\-fileseed = value
+A numerical value that acts as a seed for file add and modify operations.
+Files with identical seeds will be identical. Ranges may be used.
+.TP
+.BI \-\-filesize = value
+For
+.BR add ,
+the size of each new file. For
+.BR modify ,
+how much of each file's content to change. Same value rules as
+.BR \-\-size .
+.TP
+.BI \-\-filetype = type
+For
+.B add
+only:
+.BR random ", " binary ", " sparse ", or " text .
+Default:
+.BR random .
+.TP
+.BI \-\-modifytype = type
+For
+.B modify
+only:
+.BR append ", " truncate ", " overwrite ", " chop ", " insert ", or " random .
+Default:
+.BR random .
+.TP
+.BI \-\-maxdepth = N
+For
+.B dadd
+and
+.B dmove
+only: how many levels deep the directory structure is allowed to go.
+Default: 2.
+.TP
+.BI \-\-threads = N
+Number of worker threads to use for file operations. 0 or 1 disables
+threading. Default: the number of hardware threads available.
+.TP
+.BI \-\-seed = hex
+Seed for the pseudo-random number generator, as a hex string. If not
+given, a random seed is generated and recorded so the run can be
+reproduced later.
+.TP
+.B \-\-verbose
+Print details about every individual error, conflict, or discrepancy
+found, instead of just a summary count. Shorthand:
+.BR \-v .
+.TP
+.BI \-\-replay[= file ]
+Execute the operations, in order, from the provided replay file. If
+.I file
+is omitted,
+.B DummyDir.replay
+inside the target directory is used. No
+.I operation
+argument is given in this mode; the first positional argument is the
+target directory.
+.TP
+.B \-\-help
+Show a help message and exit.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Invalid arguments, an unrecognized operation or flag, or a missing/invalid
+directory path.
+.TP
+.B 2
+An unknown, non-standard exception occurred.
+.SH FILES
+.TP
+.B DummyDir.manifest
+Located in the root of the target directory. Tracks every file and
+directory
+.B dummydir
+has created there, along with each file's size and MD5 hash.
+.TP
+.B DummyDir.replay
+Located in the root of the target directory. A log of every operation
+performed against it, in the exact form needed to reproduce the run with
+.BR \-\-replay .
+.SH EXAMPLES
+.TP
+Add roughly 500 megabytes of new files, each between 10 and 20 megabytes:
+.B dummydir add ./mydir \-\-size=500M \-\-filesize=10M\-20M
+.TP
+Delete 25% of the files currently in the directory:
+.B dummydir delete ./mydir \-\-count=25%
+.TP
+Move 5 random subdirectories, keeping the tree to 3 levels deep or less:
+.B dummydir dmove ./mydir \-\-count=5 \-\-maxdepth=3
+.TP
+Check every file against the manifest, listing any problems found:
+.B dummydir verify ./mydir \-\-verbose
+.TP
+Rebuild the manifest from what is actually present on disk:
+.B dummydir rebuild ./mydir
+.TP
+Replay a previously recorded sequence of operations:
+.B dummydir \-\-replay ./mydir
+.SH NOTES
+Every operation, once completed, reports how many bytes and how many
+items were affected, along with the resulting MD5 hash of the manifest
+file. Two runs performed with the same sequence of operations and the
+same recorded seeds will always produce manifests with an identical hash,
+which makes
+.B dummydir
+suitable for reproducible test fixtures and regression baselines.
+.SH AUTHOR
+Written by Chris Bartle.
+.SH LICENSE
+BSD 3\-Clause License. See the
+.B LICENSE
+file distributed with the source code for the full text.

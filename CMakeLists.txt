@@ -62,7 +62,17 @@ if(WIN32)
 endif()
 
 include(GNUInstallDirs)
-install(TARGETS dummydir
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+install(TARGETS dummydir DESTINATION bin)
+install(FILES docs/dummydir.1 DESTINATION share/man/man1)
+
+#CPACK stuff
+set(CPACK_PACKAGE_NAME "DummyDir")
+set(CPACK_PACKAGE_VENDOR "Chris Bartle")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A utility to generate a directory of dummy data")
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_CONTACT "software@chrisbartle.com")
+
+# 3. Include CPack
+include(CPack)
