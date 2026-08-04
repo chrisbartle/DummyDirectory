@@ -1,0 +1,76 @@
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build --config Release --parallel
+      - run: |
+          mkdir -p dist
+          cp build/dummydir dist/
+          tar -czf dummydir-${{ github.ref_name }}-linux-x86_64.tar.gz -C dist dummydir
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-tarball
+          path: dummydir-*-linux-x86_64.tar.gz
+
+  freebsd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cross-platform-actions/action@v0.24.0
+        with:
+          operating_system: freebsd
+          version: '14.1'
+          shell: bash
+          run: |
+            sudo pkg install -y cmake
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release --parallel
+            mkdir -p dist
+            cp build/dummydir dist/
+            tar -czf dummydir-${{ github.ref_name }}-freebsd-x86_64.tar.gz -C dist dummydir
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-tarball
+          path: dummydir-*-freebsd-x86_64.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build
+      - run: cmake --build build --config Release --parallel
+      - name: Package
+        shell: pwsh
+        run: |
+          mkdir dist
+          Copy-Item build\Release\dummydir.exe dist\
+          Compress-Archive -Path dist\dummydir.exe -DestinationPath dummydir-${{ github.ref_name }}-windows-x86_64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: dummydir-*-windows-x86_64.zip
+
+  publish:
+    needs: [linux, freebsd, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.tar.gz
+          generate_release_notes: true
