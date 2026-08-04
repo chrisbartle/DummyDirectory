@@ -1,4 +1,4 @@
-.TH DUMMYDIR 1 "2026-08-03" "DummyDir 0.9.0" "User Commands"
+.TH DUMMYDIR 1 "2026-08-03" "DummyDir @PROJECT_VERSION@" "User Commands"
 .SH NAME
 dummydir \- generate and manipulate a directory tree of files for testing purposes
 .SH SYNOPSIS
