@@ -47,6 +47,11 @@ configure_file(
     ${CMAKE_CURRENT_BINARY_DIR}/generated/cmake_vals.h
     @ONLY
 )
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/docs/dummydir.1.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/dummydir.1
+    @ONLY
+)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 # Generate an rc file with the version information filled in by cmake
@@ -63,7 +68,7 @@ endif()
 
 include(GNUInstallDirs)
 install(TARGETS dummydir DESTINATION bin)
-install(FILES docs/dummydir.1 DESTINATION share/man/man1)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/dummydir.1 DESTINATION share/man/man1)
 
 #CPACK stuff
 set(CPACK_PACKAGE_NAME "DummyDir")
