@@ -1,0 +1,78 @@
+# .github/workflows/build.yml
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Smoke test
+        run: |
+          ./build/dummydir add /tmp/dd_test --size=5M
+          ./build/dummydir verify /tmp/dd_test
+          ./build/dummydir clean /tmp/dd_test
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dummydir-linux-x86_64
+          path: build/dummydir
+
+  freebsd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build on FreeBSD VM
+        uses: cross-platform-actions/action@v0.24.0
+        with:
+          operating_system: freebsd
+          version: '14.1'
+          shell: bash
+          run: |
+            sudo pkg install -y cmake
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release --parallel
+            ./build/dummydir add /tmp/dd_test --size=5M
+            ./build/dummydir verify /tmp/dd_test
+            ./build/dummydir clean /tmp/dd_test
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dummydir-freebsd-x86_64
+          path: build/dummydir
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          .\build\Release\dummydir.exe add C:\dd_test --size=5M
+          .\build\Release\dummydir.exe verify C:\dd_test
+          .\build\Release\dummydir.exe clean C:\dd_test
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dummydir-windows-x86_64
+          path: build/Release/dummydir.exe
