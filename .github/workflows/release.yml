@@ -79,15 +79,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Downloads files from all uploaded artifacts directly into the 'dist' directory
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-
-      - name: Flatten Artifact Directories
-        run: |
-          mkdir dist
-          find artifacts -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.deb" -o -name "*.tar.gz" \) -exec cp {} dist/ \;
+          path: dist
+          merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
