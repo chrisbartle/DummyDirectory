@@ -77,6 +77,8 @@ jobs:
   publish-release:
     needs: [build-native, build-freebsd]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Grants the token write access to create releases and push release assets
 
     steps:
       # Downloads files from all uploaded artifacts directly into the 'dist' directory
