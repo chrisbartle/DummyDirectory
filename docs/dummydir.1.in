@@ -133,14 +133,7 @@ found, instead of just a summary count. Shorthand:
 .BR \-v .
 .TP
 .BI \-\-replay[= file ]
-Execute the operations, in order, from the provided replay file. If
-.I file
-is omitted,
-.B DummyDir.replay
-inside the target directory is used. No
-.I operation
-argument is given in this mode; the first positional argument is the
-target directory.
+Execute the operations, in order, from the provided replay file.
 .TP
 .B \-\-help
 Show a help message and exit.
@@ -194,6 +187,11 @@ same recorded seeds will always produce manifests with an identical hash,
 which makes
 .B dummydir
 suitable for reproducible test fixtures and regression baselines.
+.PP
+Numeric flags can be presented as a single number (eg 101), range of
+numbers (eg 101-150), percentage (50%), or range of percentages
+(25%-50%). A letter can be placed after the number to indicate
+a base 2 multiplier (eg 10k = 10240).
 .SH AUTHOR
 Written by Chris Bartle.
 .SH LICENSE
