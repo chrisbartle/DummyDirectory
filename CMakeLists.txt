@@ -79,5 +79,14 @@ set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
 set(CPACK_PACKAGE_CONTACT "software@chrisbartle.com")
 
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    set(CPACK_GENERATOR "TGZ")
+else() # Linux
+    set(CPACK_GENERATOR "DEB;TGZ")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Chris Bartle <software@chrisbartle.com>")
+endif()
+
 # 3. Include CPack
 include(CPack)
