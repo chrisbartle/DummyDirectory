@@ -1,13 +1,14 @@
 name: Build and Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
 
 jobs:
   # ------------------------------------------------------------------
-  # Job 1: Build Windows (.exe) and Linux (.deb / .tar.gz)
+  # Job 1: Build Windows (.exe / .zip) and Linux (.deb / .tar.gz)
   # ------------------------------------------------------------------
   build-native:
     strategy:
@@ -32,17 +33,21 @@ jobs:
 
       - name: Package with CPack
         run: cpack --config build/CPackConfig.cmake
-        working-directory: ${{ github.workspace }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.artifact_name }}
           path: |
+            *.exe
+            *.zip
+            *.deb
+            *.tar.gz
             build/*.exe
             build/*.zip
             build/*.deb
             build/*.tar.gz
+          if-no-files-found: error
 
   # ------------------------------------------------------------------
   # Job 2: Build FreeBSD (.tar.gz) inside QEMU VM
@@ -69,7 +74,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-freebsd
-          path: build/*.tar.gz
+          path: |
+            *.tar.gz
+            build/*.tar.gz
+          if-no-files-found: error
 
   # ------------------------------------------------------------------
   # Job 3: Create GitHub Release and Attach Packages
@@ -78,10 +86,9 @@ jobs:
     needs: [build-native, build-freebsd]
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Grants the token write access to create releases and push release assets
+      contents: write
 
     steps:
-      # Downloads files from all uploaded artifacts directly into the 'dist' directory
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
