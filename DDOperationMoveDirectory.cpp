@@ -175,7 +175,7 @@ uint64_t DDOperationMoveDirectory::MoveOneDirectory(DDDirectory &directory, DDPa
 
         m_processedCount++;
         m_processedSize += directorySize;
-        directory.setProcessingStatus(DDDirectory::NONE);
+        directory.setProcessingStatus(DDDirectory::COMPLETE);
         return directorySize;
     }
     catch (const std::exception& e) {

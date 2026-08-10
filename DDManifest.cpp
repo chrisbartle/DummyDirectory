@@ -138,6 +138,25 @@ void DDManifest::SaveToFile()
  */
 void DDManifest::PostOperationCleanup()
 {
+    //We'll need to sort in order to find duplicate entries.
+    Sort();
+
+    //Iterate through the list of directories and see if there are any duplicates
+    //This code isn't very advanced and it could miss a situation where there are more than 2 duplicates. That shouldn't happen however.
+    for (size_t dirPos = 1; dirPos < m_directories.size(); dirPos++)
+    {
+        DDDirectory& thisDir = *(m_directories[dirPos]);
+        DDDirectory& thatDir = *(m_directories[dirPos-1]);
+        if (thisDir.relativePath() == thatDir.relativePath())
+        {
+            //A duplicate was found! We want to delete whichever one was not recently processed, unless the other one is a conflict (which is expected)
+            if ((thisDir.processingStatus() == DDDirectory::NONE) && (thatDir.processingStatus() != DDDirectory::CONFLICT))
+                thisDir.setProcessingStatus(DDDirectory::CONFLICT);
+            if ((thisDir.processingStatus() != DDDirectory::CONFLICT) && (thatDir.processingStatus() == DDDirectory::NONE))
+                thatDir.setProcessingStatus(DDDirectory::CONFLICT);
+        }
+    }
+
     //Remove deleted directories
     erase_if(m_directories, [](const unique_ptr<DDDirectory>& d) { return ((d->processingStatus() == DDDirectory::DELETED) || (d->processingStatus() == DDDirectory::CONFLICT)); });
 
@@ -146,6 +165,22 @@ void DDManifest::PostOperationCleanup()
     {
         if (directory->processingStatus() != DDDirectory::NONE)
             directory->setProcessingStatus(DDDirectory::NONE);
+    }
+
+    //Iterate now through the files and see if there are any duplicates
+    //This code isn't very advanced and it could miss a situation where there are more than 2 duplicates. That shouldn't happen however.
+    for (size_t filePos = 1; filePos < m_files.size(); filePos++)
+    {
+        DDFile& thisFile = *(m_files[filePos]);
+        DDFile& thatFile = *(m_files[filePos-1]);
+        if (thisFile.relativePathname() == thatFile.relativePathname())
+        {
+            //A duplicate was found! We want to delete whichever one was not recently processed
+            if ((thisFile.processingStatus() == DDFile::NONE) && (thatFile.processingStatus() != DDFile::CONFLICT))
+                thisFile.setProcessingStatus(DDFile::CONFLICT);
+            if ((thisFile.processingStatus() != DDFile::CONFLICT) && (thatFile.processingStatus() == DDFile::NONE))
+                thatFile.setProcessingStatus(DDFile::CONFLICT);
+        }
     }
 
     //Remove deleted files

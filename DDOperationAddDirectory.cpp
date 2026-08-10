@@ -57,7 +57,7 @@ void DDOperationAddDirectory::ChildDoOperation(DDParameters &parameters)
             return;
         }
 
-        newDirectory.setProcessingStatus(DDDirectory::NONE);
+        newDirectory.setProcessingStatus(DDDirectory::COMPLETE);
         //Increment
         m_processedCount++;
         //Update the status every 5 directories

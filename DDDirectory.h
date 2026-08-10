@@ -12,7 +12,7 @@ public:
     void setRelativePath(const std::filesystem::path &newRelativePath);
     uint64_t getRelativePathDepth();
 
-    enum DirectoryProcessingStatus { NONE, PROCESSING, ERROR, CONFLICT, DELETED };
+    enum DirectoryProcessingStatus { NONE, PROCESSING, COMPLETE, ERROR, CONFLICT, DELETED };
     DirectoryProcessingStatus processingStatus() const;
     void setProcessingStatus(DirectoryProcessingStatus newProcessingStatus);
     void recordProcessingError(std::string inError) {m_processingStatus = ERROR; m_processingError = inError; };

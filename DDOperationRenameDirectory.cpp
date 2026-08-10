@@ -132,7 +132,7 @@ uint64_t DDOperationRenameDirectory::RenameOneDirectory(DDDirectory &directory, 
 
         m_processedCount++;
         m_processedSize += directorySize;
-        directory.setProcessingStatus(DDDirectory::NONE);
+        directory.setProcessingStatus(DDDirectory::COMPLETE);
         return directorySize;
     }
     catch (const std::exception& e) {
