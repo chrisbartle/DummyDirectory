@@ -240,10 +240,7 @@ DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint6
 
     uint64_t size = m_directories.size();
     uint64_t dirPos = inRNG.getFromRange(0, size-1);
-    if (m_directories[dirPos]->getRelativePathDepth() <= inMaxDepth)
-        return *(m_directories[dirPos]);
-
-    //This directory is invalid because it's too deep. We'll need to iterate through
+    //We'll need to iterate through
     //the list until we find one that isn't too deep. We'll use the coprime stride method
     //which will let us move through the list in somewhat random order while guaranteeing that
     //we eventually hit every directory (including the root).
@@ -258,7 +255,7 @@ DDDirectory &DDManifest::getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint6
         dirPos = (dirPos + stride) % size;
         //We are only picking directories that don't have a strange processing status and are within
         //the desired depth
-        if ((m_directories[dirPos]->processingStatus() == DDDirectory::NONE)
+        if (((m_directories[dirPos]->processingStatus() == DDDirectory::NONE) || (m_directories[dirPos]->processingStatus() == DDDirectory::COMPLETE))
                 && (m_directories[dirPos]->getRelativePathDepth() <= inMaxDepth))
             return *(m_directories[dirPos]);
     }

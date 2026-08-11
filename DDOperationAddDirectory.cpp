@@ -33,7 +33,7 @@ void DDOperationAddDirectory::ChildDoOperation(DDParameters &parameters)
         newDirectory.setProcessingStatus(DDDirectory::PROCESSING);
         //Pick a directory where this new directory will be added. It must be at least one lower than the max depth
         //so the new directory doesn't exceed it.
-        DDDirectory parentDirectory = m_manifest.getRandomDirectory(m_rng, maxDepth-1);
+        DDDirectory &parentDirectory = m_manifest.getRandomDirectory(m_rng, maxDepth-1);
         string directoryName = "DD_" + m_rng.getSimpleString(10);
         newDirectory.setRelativePath(parentDirectory.relativePath() / directoryName);
         filesystem::path absolutePath = parameters.ConvertToAbsolutePath(newDirectory.relativePath());
