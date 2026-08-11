@@ -165,14 +165,11 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             //Pick a random start and end point in the file, then overwrite it
             //The start point needs to be greater than the minimum but still provide room to write
             //The file size should not change
-            uint64_t startPos = rng.getFromRange(MINIMUM_FILE_SIZE, file.size()-size-1);
-            if (size > file.size() - MINIMUM_FILE_SIZE)
-            {
-                //Special case, we're trying to overwrite more than we can. In this situation
-                //start at the minimum and overwrite the rest
-                size = file.size() - MINIMUM_FILE_SIZE;
-                startPos = MINIMUM_FILE_SIZE;
-            }
+            int prefixSize = m_filePrefix.length();
+            if (size > file.size() - prefixSize)
+                //We never want to overwrite the prefix, even if the change is 100% of the file size
+                size = file.size() - prefixSize;
+            uint64_t startPos = rng.getFromRange(prefixSize, file.size()-size);
             readFile(existingFile, hasher, startPos);
             existingFile.clear();
             existingFile.seekp(existingFile.tellg());
