@@ -144,10 +144,7 @@ Success.
 .TP
 .B 1
 Invalid arguments, an unrecognized operation or flag, or a missing/invalid
-directory path.
-.TP
-.B 2
-An unknown, non-standard exception occurred.
+directory path, exception thrown, or files did not pass validation.
 .SH FILES
 .TP
 .B DummyDir.manifest

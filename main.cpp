@@ -93,6 +93,8 @@ EXAMPLES:
 
 int main(int argc, char *argv[])
 {
+    int ret = 0;
+
     //We'll do everything, and I mean EVERYTHING, inside this try/catch
     try
     {
@@ -347,6 +349,7 @@ int main(int argc, char *argv[])
                 cout << "All files were successfully validated!" << endl;
             else
             {
+                ret = 1;
                 if (missingCount > 0)
                     cout << missingCount << " files listed on the manifest are missing from the file system" << endl;
                 if (differentCount > 0)
@@ -380,6 +383,7 @@ int main(int argc, char *argv[])
             }
             if ((errorCount > 0) || (conflictCount > 0))
             {
+                ret = 1;
                 if (conflictCount > 0)
                     cout << conflictCount << " files could not be added because the file already existed" << endl;
                 if (errorCount > 0)
@@ -422,8 +426,8 @@ int main(int argc, char *argv[])
     }
     catch (...) {
         std::cerr << "Critical Error: An unknown, non-standard exception occurred." << std::endl;
-        return 2;
+        return 1;
     }
 
-    return 0;
+    return ret;
 }
