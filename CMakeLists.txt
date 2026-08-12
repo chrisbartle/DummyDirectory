@@ -84,8 +84,9 @@ if(WIN32)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
     set(CPACK_GENERATOR "TGZ")
 else() # Linux
-    set(CPACK_GENERATOR "DEB;TGZ")
+    set(CPACK_GENERATOR "DEB;RPM;TGZ")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Chris Bartle <software@chrisbartle.com>")
+    set(CPACK_RPM_PACKAGE_LICENSE "BSD3")
 endif()
 
 # 3. Include CPack
