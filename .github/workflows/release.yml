@@ -8,7 +8,7 @@ on:
 
 jobs:
   # ------------------------------------------------------------------
-  # Job 1: Build Windows (.exe / .zip) and Linux (.deb / .tar.gz)
+  # Job 1: Build Windows (.exe / .zip) and Linux (.deb / .rpm / .tar.gz)
   # ------------------------------------------------------------------
   build-native:
     strategy:
@@ -24,6 +24,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      # Install rpm tooling on Ubuntu runner to enable CPack RPM generation
+      - name: Install RPM Build Tools (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -42,10 +49,12 @@ jobs:
             *.exe
             *.zip
             *.deb
+            *.rpm
             *.tar.gz
             build/*.exe
             build/*.zip
             build/*.deb
+            build/*.rpm
             build/*.tar.gz
           if-no-files-found: error
 
