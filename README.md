@@ -28,9 +28,7 @@ The man page is included during installation and is available here:
 [Dummy Directory man page](https://www.chrisbartle.com/mandummydirectory/)
 
 # INSTALLATION
-The Windows binary and Linux installation files are available at:
-[github releases](https://github.com/chrisbartle/DummyDirectory/releases)
-[Dummy Directory webpage](https://www.chrisbartle.com/dummydirectory/)
+The Windows binary and Linux installation files are available at [github releases](https://github.com/chrisbartle/DummyDirectory/releases) and [Dummy Directory webpage](https://www.chrisbartle.com/dummydirectory/).
 
 For all other operating systems, use the following commands:
 ```
