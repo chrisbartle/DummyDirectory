@@ -18,6 +18,7 @@ DummyDirectory is a command line utility. Each time it is executed it performs a
 For example, to create a dummy directory filled with 10 gigabytes of dummy data, one must simply run:
 ```
 > dummydir add -s 10g ddtest
+```
 
 All supported options can be viewed at any time by running:
 ```
