@@ -185,7 +185,7 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
             //Pick a random start and end point in the file and then remove that data.
             //The most efficient way to do this is to write parts out to a new file
             //and copy it over the original
-            string tempFilename = "DD_" + m_rng.getSimpleString(10) + ".tmp";
+            string tempFilename = "DD_" + rng.getSimpleString(10) + ".tmp";
             filesystem::path absoluteTempPathname = absolutePathname;
             absoluteTempPathname.replace_filename(tempFilename);
             fstream tempFile(absoluteTempPathname, std::ios::out | std::ios::binary );//| std::ios::trunc);
@@ -207,7 +207,7 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
         {
             //Pick a random point in the file and insert data.
             //The most efficient way to do this is to write out to a new file and copy it back.
-            string tempFilename = "DD_" + m_rng.getSimpleString(10) + ".tmp";
+            string tempFilename = "DD_" + rng.getSimpleString(10) + ".tmp";
             filesystem::path absoluteTempPathname = absolutePathname;
             absoluteTempPathname.replace_filename(tempFilename);
             fstream tempFile(absoluteTempPathname, std::ios::out | std::ios::binary );//| std::ios::trunc);
