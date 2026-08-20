@@ -21,6 +21,7 @@ public:
 
     std::string getOperation();
     std::string getDirectoryPath();
+    int getNumberOfArguments() { return m_arguments.size(); }
     std::filesystem::path getAbsoluteDirectoryPath();
     std::filesystem::path ConvertToAbsolutePath(std::filesystem::path inPath) {return getAbsoluteDirectoryPath() / inPath; }
 
