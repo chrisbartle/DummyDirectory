@@ -202,12 +202,16 @@ void DDManifest::PostOperationCleanup()
 void DDManifest::Sort()
 {
     //Sort both files and directories so they are in order
-    sort(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
-        return a->relativePath() < b->relativePath();
-    });
-    sort(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
-        return a->relativePathname() < b->relativePathname();
-    });
+    if (!std::is_sorted(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
+            return a->relativePath() < b->relativePath(); }))
+        sort(m_directories.begin(), m_directories.end(), [](const unique_ptr<DDDirectory>& a, const unique_ptr<DDDirectory>& b) {
+            return a->relativePath() < b->relativePath();
+        });
+    if (!std::is_sorted(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
+            return a->relativePathname() < b->relativePathname(); }))
+        sort(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
+            return a->relativePathname() < b->relativePathname();
+        });
 }
 
 /**
