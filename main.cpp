@@ -262,6 +262,13 @@ int main(int argc, char *argv[])
             cout << operationValidation << endl;
             return 1;
         }
+        //Make sure there aren't too many arguments. This can happens if the user accidentally forgets to
+        //put dashs in front of a flag
+        if (mainParameters.getNumberOfArguments() > 2)
+        {
+            cout << "There are too many arguments. Did you forget to put dashes in front of a flag?" << endl;
+            return 1;
+        }
 
         //Validate the flags and make sure that they're valid
         string flagValidation = mainParameters.validateFlags();
