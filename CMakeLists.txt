@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(DummyDir VERSION 1.0.2.0 LANGUAGES CXX)
+project(DummyDir VERSION 1.0.3.0 LANGUAGES CXX)
 
 #Default to release build so that users can build on location
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)

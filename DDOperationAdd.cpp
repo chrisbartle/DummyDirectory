@@ -66,6 +66,8 @@ void DDOperationAdd::ChildDoOperation(DDParameters &parameters)
         file.setRelativePathname(directory.relativePath() / filename);
         //Come up with the file's size
         uint64_t fileSize = m_rng.processFlag(parameters.getFlag("filesize"), m_manifest.getTotalSize());
+        if (fileSize < MINIMUM_FILE_SIZE)
+            fileSize = MINIMUM_FILE_SIZE;
         uint64_t fileSeed = m_rng.get64();
         if (parameters.isFlag("fileseed"))
             fileSeed = m_rng.processFlag(parameters.getFlag("fileseed"));

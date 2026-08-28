@@ -280,7 +280,7 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
                 || (inOperation == "ddelete")  //delete directories
                 )
                 percentageAllowed = 1000000;
-            tempRNG.convertStringToNumber(inFlagValue, percentageAllowed);
+            tempRNG.processFlag(inFlagValue, percentageAllowed);
         } catch (...) {
             return "Can not parse flag " + inFlag;
         }
@@ -302,7 +302,7 @@ string DDOperation::ValidateFlag(std::string inOperation, std::string inFlag, st
             return "fileseed can only be set for add and modify operations";
         try {
             DDDeterministicPCGPRNG tempRNG;
-            tempRNG.convertStringToNumber(inFlagValue);
+            tempRNG.processFlag(inFlagValue);
         } catch (...) {
             return "Can not parse fileseed flag " + inFlag;
         }

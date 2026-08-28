@@ -147,7 +147,7 @@ std::string DDParameters::validateFlags()
     {
         std::string validationError = DDOperation::ValidateFlag(getOperation(), flag.first, flag.second);
         if (!validationError.empty())
-            validationErrors = validationError + "\n";
+            validationErrors += validationError + "\n";
     }
     return validationErrors;
 }
