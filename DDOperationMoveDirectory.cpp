@@ -20,6 +20,13 @@ void DDOperationMoveDirectory::ChildSetDefaultParameters(DDParameters &parameter
 
 void DDOperationMoveDirectory::ChildDoOperation(DDParameters &parameters)
 {
+    //UpdateDescendantPaths locates a moved directory's files with a binary search, which
+    //requires the manifest to already be sorted by path. It normally already is - every
+    //operation ends with PostOperationCleanup(), which sorts - but we make sure of it here,
+    //the same way DDOperationClean does. This has to happen before movablePositions below
+    //captures directory indices, since sorting can reorder the directory list.
+    m_manifest.Sort();
+
     uint64_t totalDirectoryCount = m_manifest.getTotalDirectoryCount();
     m_filesAffected = 0;
     //Position 0 is always the root directory and it can never be moved (it has no parent of
@@ -256,7 +263,12 @@ vector<uint64_t> DDOperationMoveDirectory::FindCandidateDestinations(const files
  */
 uint64_t DDOperationMoveDirectory::UpdateDescendantPaths(const filesystem::path &oldPath, const filesystem::path &newPath)
 {
-    //Update any subdirectories that lived underneath the moved directory
+    //Update any subdirectories that lived underneath the moved directory. The directory list
+    //stays small - it's never the bottleneck here - and, unlike the file list below, its
+    //ordering has to stay put: ChildDoOperation's movablePositions indices, along with
+    //GetSubtreeMaxDepth/FindCandidateDestinations elsewhere in this class, all depend on
+    //directory positions staying where they are, so we deliberately leave this list in
+    //whatever order it ends up in rather than re-sorting it mid-run.
     for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
     {
         DDDirectory &subDirectory = m_manifest.getDirectoryByPos(dirLoop);
@@ -264,27 +276,51 @@ uint64_t DDOperationMoveDirectory::UpdateDescendantPaths(const filesystem::path 
             subDirectory.setRelativePath(ReplacePathPrefix(subDirectory.relativePath(), oldPath, newPath));
     }
 
-    //Update any files that lived underneath the moved directory. A file can be a descendant of
-    //more than one directory that gets moved during this operation (e.g. a parent directory and
-    //one of its own nested subdirectories both get selected), so its path may legitimately need
-    //updating more than once - but its size must only ever be counted once, or the reported total
-    //could exceed the manifest's real total. We use the file's own processing status as a one-time
-    //marker for that: it starts out as NONE, and we flip it to COMPLETE the first time it's counted.
+    //The file list can be enormous, and a full scan of it here - once per moved directory - is
+    //what makes this operation so much slower than a plain file move. Since the manifest keeps
+    //files sorted by path, every descendant of oldPath sits in exactly one contiguous run
+    //starting at oldPath's sort position, so a binary search finds the start of that run
+    //directly instead of stepping past every file that isn't affected.
+    uint64_t totalFiles = m_manifest.getTotalFileCount();
+    uint64_t low = 0, high = totalFiles;
+    while (low < high)
+    {
+        uint64_t mid = low + (high - low) / 2;
+        if (m_manifest.getFileByPos(mid).relativePathname() < oldPath)
+            low = mid + 1;
+        else
+            high = mid;
+    }
+
+    //Update any files that lived underneath the moved directory, walking forward only as far as
+    //the actual run of descendants rather than the rest of the (possibly huge) file list. A file
+    //can be a descendant of more than one directory that gets moved during this operation (e.g. a
+    //parent directory and one of its own nested subdirectories both get selected), so its path
+    //may legitimately need updating more than once - but its size must only ever be counted
+    //once, or the reported total could exceed the manifest's real total. We use the file's own
+    //processing status as a one-time marker for that: it starts out as NONE, and we flip it to
+    //COMPLETE the first time it's counted.
+    uint64_t firstDescendant = low;
+    uint64_t fileLoop = low;
     uint64_t totalSize = 0;
-    for (uint64_t fileLoop = 0; fileLoop < m_manifest.getTotalFileCount(); fileLoop++)
+    while ((fileLoop < totalFiles) && IsDescendantPath(m_manifest.getFileByPos(fileLoop).relativePathname(), oldPath))
     {
         DDFile &file = m_manifest.getFileByPos(fileLoop);
-        if (IsDescendantPath(file.relativePathname(), oldPath))
+        if (file.processingStatus() == DDFile::NONE)
         {
-            if (file.processingStatus() == DDFile::NONE)
-            {
-                totalSize += file.size();
-                m_filesAffected++;
-                file.setProcessingStatus(DDFile::COMPLETE);
-            }
-            file.setRelativePathname(ReplacePathPrefix(file.relativePathname(), oldPath, newPath));
+            totalSize += file.size();
+            m_filesAffected++;
+            file.setProcessingStatus(DDFile::COMPLETE);
         }
+        file.setRelativePathname(ReplacePathPrefix(file.relativePathname(), oldPath, newPath));
+        fileLoop++;
     }
+
+    //That block's sort key just changed from oldPath's prefix to newPath's, so it may no longer
+    //sit in the right place. Move it back into position so the file list stays fully sorted -
+    //every subsequently moved directory's binary search above depends on that.
+    m_manifest.RelocateFileBlock(firstDescendant, fileLoop - firstDescendant);
+
     return totalSize;
 }
 

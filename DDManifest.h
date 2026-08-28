@@ -31,6 +31,7 @@ public:
     DDFile& getFileByPos(uint64_t inPos) { return *(m_files[inPos]); };
     DDFile& addFile() { m_files.emplace_back(std::make_unique<DDFile>()); return *(m_files.back()); };
 //    void removeFileByPos(uint64_t in Pos) { m_files.}
+    void RelocateFileBlock(uint64_t firstPos, uint64_t count);
 
     DDDirectory& getDirectoryByPos(uint64_t inPos) { return *(m_directories[inPos]); };
     DDDirectory& getRandomDirectory(DDDeterministicPCGPRNG &inRNG, uint64_t inMaxDepth = std::numeric_limits<uint64_t>::max());

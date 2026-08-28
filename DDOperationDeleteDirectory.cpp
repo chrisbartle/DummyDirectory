@@ -21,6 +21,12 @@ void DDOperationDeleteDirectory::ChildSetDefaultParameters(DDParameters &paramet
 
 void DDOperationDeleteDirectory::ChildDoOperation(DDParameters &parameters)
 {
+    //QueueDirectoryForDeletion locates a claimed directory's descendants with a binary search,
+    //which requires the manifest to already be sorted by path. It normally already is - every
+    //operation ends with PostOperationCleanup(), which sorts - but we make sure of it here, the
+    //same way DDOperationClean does.
+    m_manifest.Sort();
+
     uint64_t totalDirectoryCount = m_manifest.getTotalDirectoryCount();
     m_filesAffected = 0;
     //Position 0 is always the root directory and it can never be deleted, so there must be
@@ -124,20 +130,43 @@ uint64_t DDOperationDeleteDirectory::QueueDirectoryForDeletion(DDDirectory &dire
 {
     filesystem::path directoryPath = directory.relativePath();
 
+    //Unlike rename/move, nothing here ever changes a surviving entry's path - directories and
+    //files are only ever marked with a new processing status, never given a new path - so the
+    //manifest's sort order can never drift over the course of this operation. That means a
+    //binary search here is always safe, with no need to ever re-sort or relocate anything
+    //afterward, and it turns what used to be a full scan of the manifest per claimed directory
+    //into a jump straight to the start of the actual run of descendants.
+
     //Claim this directory and every subdirectory nested inside it
-    for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
+    uint64_t totalDirectories = m_manifest.getTotalDirectoryCount();
+    uint64_t dirLow = 0, dirHigh = totalDirectories;
+    while (dirLow < dirHigh)
     {
-        DDDirectory &subDirectory = m_manifest.getDirectoryByPos(dirLoop);
-        if (IsDescendantPath(subDirectory.relativePath(), directoryPath))
-            subDirectory.setProcessingStatus(DDDirectory::PROCESSING);
+        uint64_t mid = dirLow + (dirHigh - dirLow) / 2;
+        if (m_manifest.getDirectoryByPos(mid).relativePath() < directoryPath)
+            dirLow = mid + 1;
+        else
+            dirHigh = mid;
     }
+    for (uint64_t dirLoop = dirLow; (dirLoop < totalDirectories) && IsDescendantPath(m_manifest.getDirectoryByPos(dirLoop).relativePath(), directoryPath); dirLoop++)
+        m_manifest.getDirectoryByPos(dirLoop).setProcessingStatus(DDDirectory::PROCESSING);
 
     //Queue up deletion of every unclaimed file underneath this directory
+    uint64_t totalFiles = m_manifest.getTotalFileCount();
+    uint64_t fileLow = 0, fileHigh = totalFiles;
+    while (fileLow < fileHigh)
+    {
+        uint64_t mid = fileLow + (fileHigh - fileLow) / 2;
+        if (m_manifest.getFileByPos(mid).relativePathname() < directoryPath)
+            fileLow = mid + 1;
+        else
+            fileHigh = mid;
+    }
     uint64_t anticipatedSize = 0;
-    for (uint64_t fileLoop = 0; fileLoop < m_manifest.getTotalFileCount(); fileLoop++)
+    for (uint64_t fileLoop = fileLow; (fileLoop < totalFiles) && IsDescendantPath(m_manifest.getFileByPos(fileLoop).relativePathname(), directoryPath); fileLoop++)
     {
         DDFile &file = m_manifest.getFileByPos(fileLoop);
-        if (IsDescendantPath(file.relativePathname(), directoryPath) && (file.processingStatus() == DDFile::NONE))
+        if (file.processingStatus() == DDFile::NONE)
         {
             anticipatedSize += file.size();
             file.setProcessingStatus(DDFile::QUEUED);

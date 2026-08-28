@@ -3,6 +3,7 @@
 #include <iostream>
 #include <numeric>
 #include <algorithm>
+#include <iterator>
 #include <format>
 #include <sstream>
 #include <iomanip>
@@ -212,6 +213,39 @@ void DDManifest::Sort()
         sort(m_files.begin(), m_files.end(), [](const unique_ptr<DDFile>& a, const unique_ptr<DDFile>& b) {
             return a->relativePathname() < b->relativePathname();
         });
+}
+
+/**
+ * @brief DDManifest::RelocateFileBlock
+ * A directory rename/move rewrites the shared path prefix of every file underneath it in one
+ * pass, which changes their sort key. Since that block was contiguous and already sorted
+ * amongst itself (only the shared prefix changed - the part of each path that determines their
+ * order relative to each other is untouched), and every file outside the block was left alone,
+ * the file list as a whole is sorted everywhere except for wherever this one block now belongs.
+ * This moves it there, cheaply (just relocating unique_ptrs, not file data), so that future
+ * binary searches for a directory's descendants keep working.
+ * @param firstPos Index of the first file in the block
+ * @param count How many files are in the block
+ */
+void DDManifest::RelocateFileBlock(uint64_t firstPos, uint64_t count)
+{
+    if (count == 0)
+        return;
+
+    //Pull the block out of the list
+    std::vector<std::unique_ptr<DDFile>> block;
+    block.reserve(count);
+    for (uint64_t i = 0; i < count; i++)
+        block.push_back(std::move(m_files[firstPos + i]));
+    m_files.erase(m_files.begin() + firstPos, m_files.begin() + firstPos + count);
+
+    //What's left is still fully sorted, so a binary search finds exactly where this (still
+    //internally sorted) block belongs now
+    auto insertPos = std::lower_bound(m_files.begin(), m_files.end(), block.front()->relativePathname(),
+        [](const std::unique_ptr<DDFile> &a, const std::filesystem::path &path) {
+            return a->relativePathname() < path;
+        });
+    m_files.insert(insertPos, std::make_move_iterator(block.begin()), std::make_move_iterator(block.end()));
 }
 
 /**
