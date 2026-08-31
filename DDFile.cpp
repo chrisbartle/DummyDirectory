@@ -7,7 +7,7 @@ DDFile::DDFile()
 }
 
 
-std::filesystem::path DDFile::relativePathname() const
+const std::filesystem::path &DDFile::relativePathname() const
 {
     return m_relativePathname;
 }

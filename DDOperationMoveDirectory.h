@@ -21,7 +21,10 @@ private:
     uint64_t MoveOneDirectory(DDDirectory &directory, DDParameters &parameters, uint64_t maxDepth);
     uint64_t UpdateDescendantPaths(const std::filesystem::path &oldPath, const std::filesystem::path &newPath);
     uint64_t GetSubtreeMaxDepth(const std::filesystem::path &directoryPath, uint64_t directoryDepth);
+    uint64_t GetSubtreeMaxDepthSorted(uint64_t directoryPos);
     std::vector<uint64_t> FindCandidateDestinations(const std::filesystem::path &directoryPath, uint64_t subtreeExtraDepth, uint64_t maxDepth);
+    bool HasCandidateDestination(const std::filesystem::path &directoryPath, uint64_t subtreeExtraDepth, uint64_t maxDepth);
+    bool IsValidDestination(DDDirectory &candidate, const std::filesystem::path &directoryPath, const std::filesystem::path &currentParentPath, uint64_t subtreeExtraDepth, uint64_t maxDepth);
 
     static bool IsDescendantPath(const std::filesystem::path &path, const std::filesystem::path &ancestor);
     static std::filesystem::path ReplacePathPrefix(const std::filesystem::path &path, const std::filesystem::path &oldPrefix, const std::filesystem::path &newPrefix);

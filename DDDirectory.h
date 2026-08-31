@@ -8,7 +8,10 @@ class DDDirectory
 public:
     DDDirectory();
 
-    std::filesystem::path relativePath() const;
+    //Returned by reference rather than by value. These accessors sit inside loops that run
+    //hundreds of millions of times on a large manifest, and returning a path by value there
+    //means constructing (and heap-allocating) a brand new path object on every single read.
+    const std::filesystem::path &relativePath() const;
     void setRelativePath(const std::filesystem::path &newRelativePath);
     uint64_t getRelativePathDepth();
 

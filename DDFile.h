@@ -10,7 +10,11 @@ class DDFile
 public:
     DDFile();
 
-    std::filesystem::path relativePathname() const;
+    //Returned by reference rather than by value. This accessor is read by the manifest's sort
+    //comparators and by the duplicate scan in PostOperationCleanup, so on a million-file
+    //manifest it runs tens of millions of times per operation - returning a path by value
+    //there means a heap allocation on every single read.
+    const std::filesystem::path &relativePathname() const;
     void setRelativePathname(const std::filesystem::path &newRelativePathname);
 
     uint64_t size() const;

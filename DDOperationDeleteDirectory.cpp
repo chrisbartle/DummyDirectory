@@ -85,6 +85,19 @@ void DDOperationDeleteDirectory::ChildDoOperation(DDParameters &parameters)
                 sizeSoFar += QueueDirectoryForDeletion(directory, parameters);
                 selectedPositions.push_back(dirPos);
                 countSoFar++;
+                if (!parameters.isFlag("size"))
+                    //We're driven by --count here, so m_targetSize isn't being used to decide
+                    //when to stop selecting - repurpose it to track the running total of bytes
+                    //queued so far. The actual deletions happen on background threads and only
+                    //update m_processedSize (not m_processedCount, which this class deliberately
+                    //reserves for completed directories - see DDOperationDeleteDirectory.h), and
+                    //m_processedCount doesn't move until every file is gone and every claimed
+                    //directory has been removed at the very end of this function. Without this,
+                    //UpdateProcessingStatus() below (and the percentage shown to the user, via
+                    //WaitForThreadsToComplete()'s polling once this loop finishes) would sit at
+                    //0% for the entire, and usually by far longest, file-deletion phase and only
+                    //jump once everything is already done.
+                    m_targetSize = sizeSoFar;
                 //Update the status every 5 directories
                 if (countSoFar % 5 == 0)
                     UpdateProcessingStatus();

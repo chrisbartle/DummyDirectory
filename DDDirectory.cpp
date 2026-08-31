@@ -4,7 +4,7 @@ DDDirectory::DDDirectory() {
     m_processingStatus = NONE;
 }
 
-std::filesystem::path DDDirectory::relativePath() const
+const std::filesystem::path &DDDirectory::relativePath() const
 {
     return m_relativePath;
 }

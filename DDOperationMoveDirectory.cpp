@@ -67,9 +67,24 @@ void DDOperationMoveDirectory::ChildDoOperation(DDParameters &parameters)
     for (uint64_t dirLoop = 1; dirLoop < totalDirectoryCount; dirLoop++)
     {
         DDDirectory &candidate = m_manifest.getDirectoryByPos(dirLoop);
-        uint64_t subtreeExtraDepth = GetSubtreeMaxDepth(candidate.relativePath(), candidate.getRelativePathDepth());
-        if (!FindCandidateDestinations(candidate.relativePath(), subtreeExtraDepth, maxDepth).empty())
+        //Nothing has moved yet at this point, so the directory list is still in the sorted order
+        //Sort() left it in, which lets us measure the subtree without scanning the whole list.
+        uint64_t subtreeExtraDepth = GetSubtreeMaxDepthSorted(dirLoop);
+        //We only need to know whether a destination exists, not what all of them are, so this
+        //stops at the first one it finds instead of building (and heap-allocating) the entire
+        //candidate list just to ask whether it came back empty.
+        if (HasCandidateDestination(candidate.relativePath(), subtreeExtraDepth, maxDepth))
             movablePositions.push_back(dirLoop);
+
+        //This whole pass runs before the move loop below, so it never reaches
+        //UpdateProcessingStatus() and would otherwise report nothing at all while it worked.
+        //It is normally fast enough now that it goes by in an instant, but it can still
+        //degrade: HasCandidateDestination only exits early when it finds a destination, so a
+        //tree where maxdepth rules out most moves makes it scan the full directory list every
+        //time, and the pass goes quadratic again. Reporting progress here keeps that case
+        //legible instead of silent.
+        if (m_statusCallbackFunction && (dirLoop % 100 == 0))
+            m_statusCallbackFunction(static_cast<double>(dirLoop) / static_cast<double>(totalDirectoryCount));
     }
     //Nothing in the manifest can be moved anywhere under these constraints
     if (movablePositions.empty())
@@ -220,6 +235,37 @@ uint64_t DDOperationMoveDirectory::GetSubtreeMaxDepth(const filesystem::path &di
 }
 
 /**
+ * @brief DDOperationMoveDirectory::GetSubtreeMaxDepthSorted
+ * The same measurement GetSubtreeMaxDepth makes, but for the case where the directory list is
+ * known to still be in sorted order - which is true throughout the pre-screening pass, since
+ * nothing has been moved yet at that point. Sorting puts a directory's descendants in one
+ * contiguous run immediately after it (a path separator sorts below every character used in the
+ * "DD_" names this tool generates, so no sibling can ever sort in between), so the subtree can
+ * be measured by walking forward from the directory until the run ends, rather than scanning the
+ * entire list looking for descendants that could be anywhere.
+ * @param directoryPos The manifest position of the directory being measured
+ * @return The relative depth of the deepest nested subdirectory
+ */
+uint64_t DDOperationMoveDirectory::GetSubtreeMaxDepthSorted(uint64_t directoryPos)
+{
+    DDDirectory &directory = m_manifest.getDirectoryByPos(directoryPos);
+    const filesystem::path &directoryPath = directory.relativePath();
+    uint64_t directoryDepth = directory.getRelativePathDepth();
+    uint64_t totalDirectories = m_manifest.getTotalDirectoryCount();
+
+    uint64_t maxExtraDepth = 0;
+    for (uint64_t dirLoop = directoryPos + 1;
+         (dirLoop < totalDirectories) && IsDescendantPath(m_manifest.getDirectoryByPos(dirLoop).relativePath(), directoryPath);
+         dirLoop++)
+    {
+        uint64_t extraDepth = m_manifest.getDirectoryByPos(dirLoop).getRelativePathDepth() - directoryDepth;
+        if (extraDepth > maxExtraDepth)
+            maxExtraDepth = extraDepth;
+    }
+    return maxExtraDepth;
+}
+
+/**
  * @brief DDOperationMoveDirectory::FindCandidateDestinations
  * Finds every directory in the manifest that directoryPath could validly be moved underneath:
  * not itself or one of its own descendants (that would nest it inside itself), not its current
@@ -238,16 +284,59 @@ vector<uint64_t> DDOperationMoveDirectory::FindCandidateDestinations(const files
     candidatePositions.reserve(m_manifest.getTotalDirectoryCount());
     for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
     {
-        DDDirectory &candidate = m_manifest.getDirectoryByPos(dirLoop);
-        if (IsDescendantPath(candidate.relativePath(), directoryPath))
-            continue; //this is the directory itself, or one of its own descendants
-        if (candidate.relativePath() == currentParentPath)
-            continue; //this is where the directory already lives
-        if (candidate.getRelativePathDepth() + 1 + subtreeExtraDepth > maxDepth)
-            continue; //the moved directory's deepest descendant would end up too deep
-        candidatePositions.push_back(dirLoop);
+        if (IsValidDestination(m_manifest.getDirectoryByPos(dirLoop), directoryPath, currentParentPath, subtreeExtraDepth, maxDepth))
+            candidatePositions.push_back(dirLoop);
     }
     return candidatePositions;
+}
+
+/**
+ * @brief DDOperationMoveDirectory::HasCandidateDestination
+ * Answers only whether directoryPath has somewhere valid it could be moved to, without
+ * collecting every such destination the way FindCandidateDestinations does. The pre-screening
+ * pass asks this question about every directory in the manifest, and building - and
+ * heap-allocating - a full candidate list for each one purely to test it for emptiness is by
+ * far the most expensive thing that pass used to do. This stops at the first hit instead, which
+ * in practice is almost immediate: the root directory sits at position 0 and is a valid
+ * destination for anything that isn't already one of its immediate children.
+ * @param directoryPath The relative path of the directory being moved
+ * @param subtreeExtraDepth How many levels deeper the directory's existing subtree extends,
+ * from GetSubtreeMaxDepth()/GetSubtreeMaxDepthSorted()
+ * @param maxDepth The deepest any directory is allowed to end up at, from the --maxdepth flag
+ * @return true if at least one valid destination exists
+ */
+bool DDOperationMoveDirectory::HasCandidateDestination(const filesystem::path &directoryPath, uint64_t subtreeExtraDepth, uint64_t maxDepth)
+{
+    filesystem::path currentParentPath = directoryPath.parent_path();
+    for (uint64_t dirLoop = 0; dirLoop < m_manifest.getTotalDirectoryCount(); dirLoop++)
+    {
+        if (IsValidDestination(m_manifest.getDirectoryByPos(dirLoop), directoryPath, currentParentPath, subtreeExtraDepth, maxDepth))
+            return true;
+    }
+    return false;
+}
+
+/**
+ * @brief DDOperationMoveDirectory::IsValidDestination
+ * The single rule for whether one directory may be moved underneath another, shared by
+ * FindCandidateDestinations and HasCandidateDestination so the pre-screening pass and the
+ * actual selection can never disagree about what counts as movable.
+ * @param candidate The prospective new parent directory
+ * @param directoryPath The relative path of the directory being moved
+ * @param currentParentPath Where the directory currently lives, i.e. directoryPath.parent_path()
+ * @param subtreeExtraDepth How many levels deeper the directory's existing subtree extends
+ * @param maxDepth The deepest any directory is allowed to end up at, from the --maxdepth flag
+ * @return true if candidate is somewhere the directory could validly be moved
+ */
+bool DDOperationMoveDirectory::IsValidDestination(DDDirectory &candidate, const filesystem::path &directoryPath, const filesystem::path &currentParentPath, uint64_t subtreeExtraDepth, uint64_t maxDepth)
+{
+    if (IsDescendantPath(candidate.relativePath(), directoryPath))
+        return false; //this is the directory itself, or one of its own descendants
+    if (candidate.relativePath() == currentParentPath)
+        return false; //this is where the directory already lives
+    if (candidate.getRelativePathDepth() + 1 + subtreeExtraDepth > maxDepth)
+        return false; //the moved directory's deepest descendant would end up too deep
+    return true;
 }
 
 /**
