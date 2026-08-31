@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
                 //Check for errors
                 uint64_t errorCount = 0;
                 uint64_t conflictCount = 0;
-                uint64_t failedCount = 0;
+                uint64_t missingCount = 0;
                 for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
                 {
                     DDFile& thisFile = manifest.getFileByPos(eloop);
@@ -220,11 +220,11 @@ int main(int argc, char *argv[])
                         if (mainParameters.isFlag("verbose"))
                             cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
                     }
-                    else if (thisFile.processingStatus() == DDFile::FAILED)
+                    else if (thisFile.processingStatus() == DDFile::MISSING)
                     {
-                        failedCount++;
+                        missingCount++;
                         if (mainParameters.isFlag("verbose"))
-                            cout << thisFile.relativePathname().string() << " could not be created: " << thisFile.getProcessingError() << endl;
+                            cout << thisFile.relativePathname().string() << " is not on the file system and was removed from the manifest" << endl;
                     }
                     else if (thisFile.processingStatus() == DDFile::CONFLICT)
                     {
@@ -253,15 +253,15 @@ int main(int argc, char *argv[])
                             cout << thisDirectory.relativePath().string() << " could not be used due to an existing directory with the same name" << endl;
                     }
                 }
-                if ((errorCount > 0) || (conflictCount > 0) || (failedCount > 0) || (dirErrorCount > 0) || (dirConflictCount > 0))
+                if ((errorCount > 0) || (conflictCount > 0) || (missingCount > 0) || (dirErrorCount > 0) || (dirConflictCount > 0))
                 {
                     ret = 1;
                     if (conflictCount > 0)
                         cout << conflictCount << " files could not be added because the file already existed" << endl;
-                    if (failedCount > 0)
+                    if (missingCount > 0)
                     {
-                        cout << failedCount << " files could not be created and were left off the manifest" << endl;
-                        replay.WriteComment("Files could not be created!");
+                        cout << missingCount << " files were not on the file system and were removed from the manifest" << endl;
+                        replay.WriteComment("Missing files detected!");
                     }
                     if (errorCount > 0)
                     {
@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
             //With other operations, we only care about errors and conflicts
             uint64_t errorCount = 0;
             uint64_t conflictCount = 0;
-            uint64_t failedCount = 0;
+            uint64_t missingCount = 0;
             for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
             {
                 DDFile& thisFile = manifest.getFileByPos(eloop);
@@ -428,11 +428,11 @@ int main(int argc, char *argv[])
                     if (mainParameters.isFlag("verbose"))
                         cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
                 }
-                else if (thisFile.processingStatus() == DDFile::FAILED)
+                else if (thisFile.processingStatus() == DDFile::MISSING)
                 {
-                    failedCount++;
+                    missingCount++;
                     if (mainParameters.isFlag("verbose"))
-                        cout << thisFile.relativePathname().string() << " could not be created: " << thisFile.getProcessingError() << endl;
+                        cout << thisFile.relativePathname().string() << " is not on the file system and was removed from the manifest" << endl;
                 }
                 else if (thisFile.processingStatus() == DDFile::CONFLICT)
                 {
@@ -463,15 +463,15 @@ int main(int argc, char *argv[])
                         cout << thisDirectory.relativePath().string() << " could not be used due to an existing directory with the same name" << endl;
                 }
             }
-            if ((errorCount > 0) || (conflictCount > 0) || (failedCount > 0) || (dirErrorCount > 0) || (dirConflictCount > 0))
+            if ((errorCount > 0) || (conflictCount > 0) || (missingCount > 0) || (dirErrorCount > 0) || (dirConflictCount > 0))
             {
                 ret = 1;
                 if (conflictCount > 0)
                     cout << conflictCount << " files could not be added because the file already existed" << endl;
-                if (failedCount > 0)
+                if (missingCount > 0)
                 {
-                    cout << failedCount << " files could not be created and were left off the manifest" << endl;
-                    replay.WriteComment("Files could not be created!");
+                    cout << missingCount << " files were not on the file system and were removed from the manifest" << endl;
+                    replay.WriteComment("Missing files detected!");
                 }
                 if (errorCount > 0)
                 {

@@ -26,15 +26,10 @@ public:
 //    enum FileExistanceStatus { NOEXIST, EXISTS, NOTDD };
 //    FileExistanceStatus existsOnFilesystem();
 
-    //FAILED means the file never made it onto the filesystem at all, so unlike ERROR - where
-    //the file exists and something went wrong with it - the manifest entry describes nothing
-    //real and has to be dropped rather than left behind claiming a size and hash for a file
-    //that isn't there.
-    enum FileProcessingStatus { NONE, QUEUED, STARTED, COMPLETE, ERROR, DELETED, CONFLICT, MISSING, DIFFERENT, FAILED };
+    enum FileProcessingStatus { NONE, QUEUED, STARTED, COMPLETE, ERROR, DELETED, CONFLICT, MISSING, DIFFERENT };
     FileProcessingStatus processingStatus() const;
     void setProcessingStatus(FileProcessingStatus newProcessingStatus);
     void recordProcessingError(std::string inError) {m_processingStatus = ERROR; m_processingError = inError; };
-    void recordCreationFailure(std::string inError) {m_processingStatus = FAILED; m_processingError = inError; };
     std::string getProcessingError() { return m_processingError; };
 
 private:

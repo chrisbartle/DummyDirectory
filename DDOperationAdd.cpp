@@ -125,8 +125,9 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         std::ofstream outFile(absolutePathname, ofstreamFlags);
         if (!outFile.is_open())
         {
-            //Nothing was created, so this file must not be left on the manifest
-            file.recordCreationFailure("Could not create file " + absolutePathname.string());
+            //Nothing was created, so the file is not on the filesystem - which is exactly what
+            //MISSING means, and is what gets the entry dropped from the manifest again.
+            file.setProcessingStatus(DDFile::MISSING);
             return;
         }
 
@@ -208,7 +209,12 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         //written. Check the stream before believing any of it.
         if (!outFile)
         {
-            file.recordCreationFailure("Failed to write file " + absolutePathname.string() + " (the disk may be full)");
+            //Whatever we managed to write is not the file we were asked for, so remove the
+            //partial file and treat the entry the same as one that never appeared at all.
+            outFile.clear();
+            std::error_code ec;
+            std::filesystem::remove(absolutePathname, ec);
+            file.setProcessingStatus(DDFile::MISSING);
             return;
         }
         //Update the file stats
