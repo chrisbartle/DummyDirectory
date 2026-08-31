@@ -28,8 +28,11 @@ void DDParameters::LoadFromCommandLine(int argc, char* argv[])
             }
             // Handle space-separated key value (e.g., -o dir)
             else if (i + 1 < argc && argv[i + 1][0] != '-') {
-                //Some flags don't take a value
-                if (arg == "--verbose")
+                //Some flags don't take a value. These have to be listed in every form the user
+                //might type them, short ones included - otherwise "-v" swallows whatever follows
+                //it as its value, so "dummydir -v verify mydir" loses the operation entirely and
+                //the shorthand only appears to work when it happens to come last.
+                if ((arg == "--verbose") || (arg == "-v") || (arg == "--help"))
                     setFlag(arg, "");
                 else
                 {

@@ -7,8 +7,8 @@ dummydir \- generate and manipulate a directory tree of files for testing purpos
 .RI [ options ]
 .br
 .B dummydir
-.RB [ \-\-replay = replay-file ]
 .I directory
+.BI \-\-replay= replay-file
 .SH DESCRIPTION
 .B dummydir
 (DummyDir) generates and manipulates a directory tree of files for testing
@@ -132,8 +132,23 @@ Print details about every individual error, conflict, or discrepancy
 found, instead of just a summary count. Shorthand:
 .BR \-v .
 .TP
-.BI \-\-replay[= file ]
-Execute the operations, in order, from the provided replay file.
+.BI \-\-replay= file
+Execute the operations, in order, from the replay file at
+.IR file ,
+against
+.IR directory .
+The file location is required. It must also be a replay file from somewhere
+other than
+.I directory
+itself: replaying a directory's own
+.B DummyDir.replay
+back into it re-runs every operation on top of what those operations already
+produced, which duplicates the entire contents rather than reproducing them.
+To reproduce a run, point
+.B \-\-replay
+at the original directory's replay file and give a fresh, empty
+.I directory
+as the target.
 .TP
 .B \-\-help
 Show a help message and exit.
@@ -157,6 +172,11 @@ has created there, along with each file's size and MD5 hash.
 Located in the root of the target directory. A log of every operation
 performed against it, in the exact form needed to reproduce the run with
 .BR \-\-replay .
+Reproducing a run means feeding this file to a
+.I different
+target directory; see
+.B \-\-replay
+above.
 .SH EXAMPLES
 .TP
 Add 500 megabytes of new files, each between 10 and 20 megabytes:
@@ -174,8 +194,8 @@ Check every file against the manifest, listing any problems found:
 Rebuild the manifest from what is actually present on disk:
 .B dummydir rebuild ./mydir
 .TP
-Replay a previously recorded sequence of operations:
-.B dummydir \-\-replay ./mydir
+Reproduce a previously recorded sequence of operations in a new, empty directory:
+.B dummydir ./newdir \-\-replay=./mydir/DummyDir.replay
 .SH NOTES
 Every operation, once completed, reports how many bytes and how many
 items were affected, along with the resulting MD5 hash of the manifest

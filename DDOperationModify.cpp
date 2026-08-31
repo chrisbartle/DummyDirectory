@@ -135,10 +135,19 @@ void DDOperationModify::ChildDoFileOperation(DDFile &file, DDParameters &paramet
         //The easiest way to truncate a file is with a call to resize_file
         if (modifyType == TRUNCATE)
         {
-            uint64_t newFileSize = file.size() - size;
+            //These are unsigned, so asking to remove more than the file holds - which is easy to
+            //do with something like --filesize=1M against much smaller files - would wrap around
+            //to an enormous number and sail straight past the minimum-size check below, leaving
+            //resize_file to attempt a file of roughly eighteen exabytes. Work out the new size
+            //only when there is actually something to take away.
+            uint64_t newFileSize = MINIMUM_FILE_SIZE;
+            if (file.size() > size)
+                newFileSize = file.size() - size;
             if (newFileSize < MINIMUM_FILE_SIZE)
                 newFileSize = MINIMUM_FILE_SIZE;
             filesystem::resize_file(absolutePathname, newFileSize);
+            //Report the number of bytes actually removed rather than the number requested
+            size = (file.size() > newFileSize) ? (file.size() - newFileSize) : 0;
             file.setSize(newFileSize);
         }
 
@@ -251,7 +260,7 @@ string DDOperationModify::GetOperationSummation()
     double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(m_endProcessing - m_startProcessing).count();
     double writeSpeed = (elapsedSeconds > 0) ? (m_processedSize / elapsedSeconds) : 0.0;
     summation = std::format(std::locale(""), "{:L} items processed. {:L} bytes worth of changes in {:.6Lf} seconds ({:.2Lf} bytes per second)\nThe total size of all affected files is {:L} bytes",
-                            m_processedCount.load(), m_processedSize.load(), elapsedSeconds, writeSpeed, m_processedFileSizeTotal);
+                            m_processedCount.load(), m_processedSize.load(), elapsedSeconds, writeSpeed, m_processedFileSizeTotal.load());
     return summation;
 }
 

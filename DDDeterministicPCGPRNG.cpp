@@ -276,6 +276,12 @@ uint64_t DDDeterministicPCGPRNG::convertStringToNumber(string inStr, uint64_t in
     else
         userNumber = std::stold(inStr);
     long double calculated = static_cast<long double>(userNumber) * multiplier;
+    //The same range check the percentage path above makes. Without it something like 1000E
+    //silently overflows the cast into an unpredictable value - the user gets no error and the
+    //operation quietly does nothing, or the wrong amount.
+    if (calculated < 0.0l || calculated > static_cast<long double>(UINT64_MAX)) {
+        throw runtime_error("Value is larger than 64 bit!");
+    }
     val = static_cast<uint64_t>(round(calculated));
     return val;
 }

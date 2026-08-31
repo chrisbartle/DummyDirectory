@@ -64,7 +64,13 @@ OPTIONS:
                          reproduced later.
     --verbose            Print details about every individual error, conflict, or discrepancy
                          found, instead of just a summary count. Shorthand: -v
-    --replay             Execute the operations, in order, from the provided replay file
+    --replay=<file>      Execute the operations, in order, from the replay file at <file>.
+                         The location is required, and it must be a replay file from somewhere
+                         other than <directory> itself -- replaying a directory's own
+                         DummyDir.replay back into it re-runs every operation on top of what
+                         they already produced, duplicating the contents instead of
+                         reproducing them. To reproduce a run, point --replay at the original
+                         directory's replay file and give a fresh, empty <directory>.
     --help               Show this help message and exit.
 
     Shorthand: -s = --size, -c = --count, -v = --verbose
@@ -87,6 +93,10 @@ EXAMPLES:
 
     dummydir rebuild ./mydir
         Rebuild DummyDir.manifest from what's actually present in ./mydir.
+
+    dummydir ./newdir --replay=./mydir/DummyDir.replay
+        Reproduce the sequence of operations recorded from ./mydir inside a new, empty
+        ./newdir.
 )";
 }
 
@@ -206,6 +216,7 @@ int main(int argc, char *argv[])
                 //Check for errors
                 uint64_t errorCount = 0;
                 uint64_t conflictCount = 0;
+                uint64_t failedCount = 0;
                 for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
                 {
                     DDFile& thisFile = manifest.getFileByPos(eloop);
@@ -215,6 +226,12 @@ int main(int argc, char *argv[])
                         if (mainParameters.isFlag("verbose"))
                             cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
                     }
+                    else if (thisFile.processingStatus() == DDFile::FAILED)
+                    {
+                        failedCount++;
+                        if (mainParameters.isFlag("verbose"))
+                            cout << thisFile.relativePathname().string() << " could not be created: " << thisFile.getProcessingError() << endl;
+                    }
                     else if (thisFile.processingStatus() == DDFile::CONFLICT)
                     {
                         conflictCount++;
@@ -222,17 +239,50 @@ int main(int argc, char *argv[])
                             cout << thisFile.relativePathname().string() << " could not be added due to an existing file with the same name" << endl;
                     }
                 }
-                if ((errorCount > 0) || (conflictCount > 0))
+                //Directories get their own pass, for the same reason as in the non-replay path
+                //below: dmove, drename and ddelete record their failures against the directory.
+                uint64_t dirErrorCount = 0;
+                uint64_t dirConflictCount = 0;
+                for (uint64_t eloop = 0; eloop < manifest.getTotalDirectoryCount(); eloop++)
                 {
+                    DDDirectory& thisDirectory = manifest.getDirectoryByPos(eloop);
+                    if (thisDirectory.processingStatus() == DDDirectory::ERROR)
+                    {
+                        dirErrorCount++;
+                        if (mainParameters.isFlag("verbose"))
+                            cout << thisDirectory.relativePath().string() << " threw error " << thisDirectory.getProcessingError() << endl;
+                    }
+                    else if (thisDirectory.processingStatus() == DDDirectory::CONFLICT)
+                    {
+                        dirConflictCount++;
+                        if (mainParameters.isFlag("verbose"))
+                            cout << thisDirectory.relativePath().string() << " could not be used due to an existing directory with the same name" << endl;
+                    }
+                }
+                if ((errorCount > 0) || (conflictCount > 0) || (failedCount > 0) || (dirErrorCount > 0) || (dirConflictCount > 0))
+                {
+                    ret = 1;
                     if (conflictCount > 0)
                         cout << conflictCount << " files could not be added because the file already existed" << endl;
+                    if (failedCount > 0)
+                    {
+                        cout << failedCount << " files could not be created and were left off the manifest" << endl;
+                        replay.WriteComment("Files could not be created!");
+                    }
                     if (errorCount > 0)
                     {
                         cout << errorCount << " files could not be processed due to an error" << endl;
                         replay.WriteComment("Errors detected!");
                     }
+                    if (dirConflictCount > 0)
+                        cout << dirConflictCount << " directories could not be used because the directory already existed" << endl;
+                    if (dirErrorCount > 0)
+                    {
+                        cout << dirErrorCount << " directories could not be processed due to an error" << endl;
+                        replay.WriteComment("Directory errors detected!");
+                    }
                     if (!mainParameters.isFlag("verbose"))
-                        cout << "Re-run with --verbose flag to get a list of specific files" << endl;
+                        cout << "Re-run with --verbose flag to get a list of specific items" << endl;
                 }
                 //Write out information to the replay file
                 replay.WriteComment(operation->GetOperationSummation());
@@ -246,7 +296,9 @@ int main(int argc, char *argv[])
             cout << "Replay processing complete!" << endl;
             cout << manifest.GetManifestSummation() << endl;
             cout << "Manifest hash is " << manifest.ComputeManifestHash() << endl;
-            return 0;
+            //Return ret rather than 0 so that a problem during any one of the replayed
+            //operations is still reflected in the exit code
+            return ret;
         }
 
         //Make sure there is an operation specified
@@ -372,6 +424,7 @@ int main(int argc, char *argv[])
             //With other operations, we only care about errors and conflicts
             uint64_t errorCount = 0;
             uint64_t conflictCount = 0;
+            uint64_t failedCount = 0;
             for (uint64_t eloop = 0; eloop < manifest.getTotalFileCount(); eloop++)
             {
                 DDFile& thisFile = manifest.getFileByPos(eloop);
@@ -381,6 +434,12 @@ int main(int argc, char *argv[])
                     if (mainParameters.isFlag("verbose"))
                         cout << thisFile.relativePathname().string() << " threw error " << thisFile.getProcessingError() << endl;
                 }
+                else if (thisFile.processingStatus() == DDFile::FAILED)
+                {
+                    failedCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisFile.relativePathname().string() << " could not be created: " << thisFile.getProcessingError() << endl;
+                }
                 else if (thisFile.processingStatus() == DDFile::CONFLICT)
                 {
                     conflictCount++;
@@ -388,18 +447,52 @@ int main(int argc, char *argv[])
                         cout << thisFile.relativePathname().string() << " could not be added due to an existing file with the same name" << endl;
                 }
             }
-            if ((errorCount > 0) || (conflictCount > 0))
+            //Directories get their own pass. Operations like dmove, drename and ddelete record
+            //failures against the directory rather than against any file, so without this a
+            //directory that could not be moved, renamed or removed would go entirely unmentioned
+            //and the run would still report success.
+            uint64_t dirErrorCount = 0;
+            uint64_t dirConflictCount = 0;
+            for (uint64_t eloop = 0; eloop < manifest.getTotalDirectoryCount(); eloop++)
+            {
+                DDDirectory& thisDirectory = manifest.getDirectoryByPos(eloop);
+                if (thisDirectory.processingStatus() == DDDirectory::ERROR)
+                {
+                    dirErrorCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisDirectory.relativePath().string() << " threw error " << thisDirectory.getProcessingError() << endl;
+                }
+                else if (thisDirectory.processingStatus() == DDDirectory::CONFLICT)
+                {
+                    dirConflictCount++;
+                    if (mainParameters.isFlag("verbose"))
+                        cout << thisDirectory.relativePath().string() << " could not be used due to an existing directory with the same name" << endl;
+                }
+            }
+            if ((errorCount > 0) || (conflictCount > 0) || (failedCount > 0) || (dirErrorCount > 0) || (dirConflictCount > 0))
             {
                 ret = 1;
                 if (conflictCount > 0)
                     cout << conflictCount << " files could not be added because the file already existed" << endl;
+                if (failedCount > 0)
+                {
+                    cout << failedCount << " files could not be created and were left off the manifest" << endl;
+                    replay.WriteComment("Files could not be created!");
+                }
                 if (errorCount > 0)
                 {
                     cout << errorCount << " files could not be processed due to an error" << endl;
                     replay.WriteComment("Errors detected!");
                 }
+                if (dirConflictCount > 0)
+                    cout << dirConflictCount << " directories could not be used because the directory already existed" << endl;
+                if (dirErrorCount > 0)
+                {
+                    cout << dirErrorCount << " directories could not be processed due to an error" << endl;
+                    replay.WriteComment("Directory errors detected!");
+                }
                 if (!mainParameters.isFlag("verbose"))
-                    cout << "Re-run with --verbose flag to get a list of specific files" << endl;
+                    cout << "Re-run with --verbose flag to get a list of specific items" << endl;
             }
         }
         manifest.PostOperationCleanup();

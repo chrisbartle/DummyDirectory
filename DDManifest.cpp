@@ -184,8 +184,11 @@ void DDManifest::PostOperationCleanup()
         }
     }
 
-    //Remove deleted files
-    erase_if(m_files, [](const unique_ptr<DDFile>& d) { return ((d->processingStatus() == DDFile::DELETED) || (d->processingStatus() == DDFile::CONFLICT) || (d->processingStatus() == DDFile::MISSING)); });
+    //Remove deleted files, along with any that never made it onto the filesystem in the first
+    //place (FAILED) - leaving those behind would mean the manifest recorded a size and a hash
+    //for a file that does not exist. Callers count these before calling us, so the failure is
+    //still reported to the user before the entry disappears.
+    erase_if(m_files, [](const unique_ptr<DDFile>& d) { return ((d->processingStatus() == DDFile::DELETED) || (d->processingStatus() == DDFile::CONFLICT) || (d->processingStatus() == DDFile::MISSING) || (d->processingStatus() == DDFile::FAILED)); });
 
     uint64_t totalFileSize = 0;
     //Iterate through the files

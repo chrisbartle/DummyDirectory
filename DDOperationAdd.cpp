@@ -123,6 +123,12 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
 
         //Open filestream
         std::ofstream outFile(absolutePathname, ofstreamFlags);
+        if (!outFile.is_open())
+        {
+            //Nothing was created, so this file must not be left on the manifest
+            file.recordCreationFailure("Could not create file " + absolutePathname.string());
+            return;
+        }
 
         uint64_t writtenSoFar = 0;
         DDMD5Hasher hasher;
@@ -158,7 +164,10 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         {
             //Binary file. Write random bytes out until the exact size is reached.
             vector<uint8_t> buffer(BUFFER_SIZE);
-            if (file.relativePathname().extension() == ".sprs")
+            //The hole has to start beyond the prefix, so a file that is only just big enough to
+            //hold the prefix has no room for one and is simply written out in full instead.
+            //Without this the hole's start point could be pushed past the end of the file.
+            if ((file.relativePathname().extension() == ".sprs") && (size > MINIMUM_FILE_SIZE))
             {
                 //A sparse file is a binary file that has lot of empty space. In order to create it,
                 //we start writing at an arbitrary point more than halfway into the file.
@@ -192,6 +201,16 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         }
 
         outFile.close();
+        //Writing to an ofstream does not throw on failure, it just quietly sets the stream's
+        //error state - so a full disk, a revoked permission or a directory that vanished
+        //part-way through would otherwise sail straight past and get recorded on the manifest
+        //as a perfectly good file, complete with a size and hash for content that was never
+        //written. Check the stream before believing any of it.
+        if (!outFile)
+        {
+            file.recordCreationFailure("Failed to write file " + absolutePathname.string() + " (the disk may be full)");
+            return;
+        }
         //Update the file stats
         file.setSize(size);
         file.setHash(hasher.finalize());
