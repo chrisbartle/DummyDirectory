@@ -211,7 +211,6 @@ void DDOperationAdd::ChildDoFileOperation(DDFile &file, DDParameters &parameters
         {
             //Whatever we managed to write is not the file we were asked for, so remove the
             //partial file and treat the entry the same as one that never appeared at all.
-            outFile.clear();
             std::error_code ec;
             std::filesystem::remove(absolutePathname, ec);
             file.setProcessingStatus(DDFile::MISSING);
