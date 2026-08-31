@@ -14,9 +14,9 @@ public:
     void LoadFromCommandLine(int argc, char* argv[]);
     void LoadFromReplay(std::string inReplayOperation, std::filesystem::path inAbsoluteDirectoryPath);
 
-    bool isFlag(std::string inFlagName);
-    std::string getFlag(std::string inFlagName);
-    void setFlag(std::string inFlagName, std::string inFlag);
+    bool isFlag(const std::string &inFlagName) const;
+    std::string getFlag(const std::string &inFlagName) const;
+    void setFlag(const std::string &inFlagName, const std::string &inFlag);
     std::string validateFlags();
 
     std::string getOperation();

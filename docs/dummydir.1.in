@@ -1,4 +1,4 @@
-.TH DUMMYDIR 1 "2026-08-11" "DummyDir @PROJECT_VERSION@" "User Commands"
+.TH DUMMYDIR 1 "2026-08-31" "DummyDir @PROJECT_VERSION@" "User Commands"
 .SH NAME
 dummydir \- generate and manipulate a directory tree of files for testing purposes
 .SH SYNOPSIS
@@ -7,8 +7,9 @@ dummydir \- generate and manipulate a directory tree of files for testing purpos
 .RI [ options ]
 .br
 .B dummydir
-.RB [ \-\-replay = replay-file ]
 .I directory
+.BI \-\-replay= replay-file
+.RI [ options ]
 .SH DESCRIPTION
 .B dummydir
 (DummyDir) generates and manipulates a directory tree of files for testing
@@ -69,24 +70,24 @@ Check that every file on disk matches what the manifest recorded.
 Rebuild the manifest from what is actually present on disk.
 .SH OPTIONS
 .TP
-.BI \-\-size = value
+.BI \-\-size= value
 Total number of bytes the operation should affect. Accepts K/M/G/T/P/E
 suffixes (e.g.\& 500M, 2.5G), a percentage of the relevant total (e.g.\&
 25%), or a range to pick randomly from (e.g.\& 1k\-10m). Shorthand:
 .BR \-s .
 .TP
-.BI \-\-count = value
+.BI \-\-count= value
 Total number of items (files or directories) the operation should affect.
 Accepts the same percentage and range rules as
 .BR \-\-size .
 Shorthand:
 .BR \-c .
 .TP
-.BI \-\-fileseed = value
+.BI \-\-fileseed= value
 A numerical value that acts as a seed for file add and modify operations.
 Files with identical seeds will have identical data. Ranges may be used.
 .TP
-.BI \-\-filesize = value
+.BI \-\-filesize= value
 For
 .BR add ,
 the size of each new file. For
@@ -94,7 +95,7 @@ the size of each new file. For
 how much of each file's content to change. Same value rules as
 .BR \-\-size .
 .TP
-.BI \-\-filetype = type
+.BI \-\-filetype= type
 For
 .B add
 only:
@@ -102,7 +103,7 @@ only:
 Default:
 .BR random .
 .TP
-.BI \-\-modifytype = type
+.BI \-\-modifytype= type
 For
 .B modify
 only:
@@ -110,7 +111,7 @@ only:
 Default:
 .BR random .
 .TP
-.BI \-\-maxdepth = N
+.BI \-\-maxdepth= N
 For
 .B dadd
 and
@@ -118,11 +119,11 @@ and
 only: how many levels deep the directory structure is allowed to go.
 Default: 2.
 .TP
-.BI \-\-threads = N
+.BI \-\-threads= N
 Number of worker threads to use for file operations. 0 or 1 disables
 threading. Default: the number of hardware threads available.
 .TP
-.BI \-\-seed = hex
+.BI \-\-seed= hex
 Seed for the pseudo-random number generator, as a hex string. If not
 given, a random seed is generated and recorded so the run can be
 reproduced later.
@@ -132,8 +133,12 @@ Print details about every individual error, conflict, or discrepancy
 found, instead of just a summary count. Shorthand:
 .BR \-v .
 .TP
-.BI \-\-replay[= file ]
-Execute the operations, in order, from the provided replay file.
+.BI \-\-replay= file
+Execute the operations, in order, from the replay file at
+.IR file ,
+against
+.IR directory .
+The file location is required.
 .TP
 .B \-\-help
 Show a help message and exit.
@@ -157,6 +162,11 @@ has created there, along with each file's size and MD5 hash.
 Located in the root of the target directory. A log of every operation
 performed against it, in the exact form needed to reproduce the run with
 .BR \-\-replay .
+Reproducing a run means feeding this file to a
+.I different
+target directory; see
+.B \-\-replay
+above.
 .SH EXAMPLES
 .TP
 Add 500 megabytes of new files, each between 10 and 20 megabytes:
@@ -174,8 +184,8 @@ Check every file against the manifest, listing any problems found:
 Rebuild the manifest from what is actually present on disk:
 .B dummydir rebuild ./mydir
 .TP
-Replay a previously recorded sequence of operations:
-.B dummydir \-\-replay ./mydir
+Reproduce a recorded sequence of operations in a new, empty directory:
+.B dummydir ./newdir \-\-replay=./mydir/DummyDir.replay
 .SH NOTES
 Every operation, once completed, reports how many bytes and how many
 items were affected, along with the resulting MD5 hash of the manifest

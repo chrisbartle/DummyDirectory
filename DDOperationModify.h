@@ -22,7 +22,9 @@ protected:
     void writeFile(fstream &inFile, string fileExtension, DDMD5Hasher &hasher, DDDeterministicPCGPRNG &inRNG, uint64_t size);
     void copyFile(fstream &sourceFile, fstream &destinationFile, DDMD5Hasher &hasher, uint64_t size);
 
-    uint64_t m_processedFileSizeTotal;
+    //Incremented from worker threads inside ChildDoFileOperation, so it has to be atomic - the
+    //same reason DDOperationDeleteDirectory's m_filesAffected is.
+    std::atomic_uint64_t m_processedFileSizeTotal = 0;
 };
 
 #endif // DDOPERATIONMODIFY_H

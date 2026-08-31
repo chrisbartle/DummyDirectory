@@ -73,8 +73,10 @@ void DDOperationRebuild::ChildDoFileOperation(DDFile &file, DDParameters &parame
         DDMD5Hasher hasher;
         char buffer[BUFFER_SIZE];
         inFile.read(buffer, BUFFER_SIZE);
-        //Verify that the prefix matches what we expect
-        if ((inFile.gcount() >= m_filePrefix.length()) && (string_view(buffer, m_filePrefix.length()) != m_filePrefix))
+        //Verify that the prefix matches what we expect. A file too short to even hold the prefix
+        //cannot be one of ours either - checking the length as part of the match rather than as a
+        //precondition for it, so that short files are rejected instead of silently adopted.
+        if ((static_cast<size_t>(inFile.gcount()) < m_filePrefix.length()) || (string_view(buffer, m_filePrefix.length()) != m_filePrefix))
         {
             //This file was not created by this software and should not be added to the manifest
             file.setProcessingStatus(DDFile::DELETED);
