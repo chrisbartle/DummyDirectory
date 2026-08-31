@@ -93,7 +93,7 @@ void DDParameters::LoadFromReplay(std::string inReplayOperation, std::filesystem
  * @param inFlagName Name of the flag with dashes removed
  * @return true if the flag exists
  */
-bool DDParameters::isFlag(std::string inFlagName)
+bool DDParameters::isFlag(const std::string &inFlagName) const
 {
     return m_flags.contains(inFlagName);
 }
@@ -102,11 +102,14 @@ bool DDParameters::isFlag(std::string inFlagName)
  * @brief DDParameters::getFlag
  * Returns the value of a command line flag (flags start with - or -- and may be set to a value)
  * @param inFlagName Name of the flag with dashes removed
- * @return The value that the flag is set to
+ * @return The value that the flag is set to, or an empty string if the flag was never set
  */
-std::string DDParameters::getFlag(std::string inFlagName)
+std::string DDParameters::getFlag(const std::string &inFlagName) const
 {
-    return m_flags[inFlagName];
+    auto flag = m_flags.find(inFlagName);
+    if (flag == m_flags.end())
+        return "";
+    return flag->second;
 }
 
 /**
@@ -115,7 +118,7 @@ std::string DDParameters::getFlag(std::string inFlagName)
  * @param inFlagName Name of the flag. -- are stripped from the flag name. Short flags are converted to their long form.
  * @param inFlag The value of the flag
  */
-void DDParameters::setFlag(std::string inFlagName, std::string inFlag)
+void DDParameters::setFlag(const std::string &inFlagName, const std::string &inFlag)
 {
     std::string flagName;
     //Strip the --
