@@ -65,12 +65,6 @@ OPTIONS:
     --verbose            Print details about every individual error, conflict, or discrepancy
                          found, instead of just a summary count. Shorthand: -v
     --replay=<file>      Execute the operations, in order, from the replay file at <file>.
-                         The location is required, and it must be a replay file from somewhere
-                         other than <directory> itself -- replaying a directory's own
-                         DummyDir.replay back into it re-runs every operation on top of what
-                         they already produced, duplicating the contents instead of
-                         reproducing them. To reproduce a run, point --replay at the original
-                         directory's replay file and give a fresh, empty <directory>.
     --help               Show this help message and exit.
 
     Shorthand: -s = --size, -c = --count, -v = --verbose
