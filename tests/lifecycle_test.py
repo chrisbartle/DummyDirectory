@@ -11,6 +11,8 @@ then checks the two invariants that matter most:
      the filesystem have drifted apart in any way (a wrong size, a stale hash, an
      entry for a file that is not there, a file on disk that is not on the
      manifest), the rebuilt manifest differs and this test fails.
+  3. clean tidies up after itself - every item it created is gone afterwards, the
+     manifest file is removed, and anything it did not create is still there.
 
 Finally it runs the whole sequence a second time in a separate directory to confirm
 the same seeds still produce the same result.
@@ -33,16 +35,20 @@ from pathlib import Path
 # dadd has to come before add so there are subdirectories for the new files to be
 # distributed into, and add has to come before the file operations so that
 # rename/move/delete have something to act on rather than silently no-opping.
-# modify and clean are not exercised here; either is a one-line addition.
+# modify runs with its default --modifytype, which picks one of append, truncate,
+# overwrite, chop or insert at random per file, so a single run covers all five paths.
+# clean is not in this list on purpose - it is checked in its own phase after the
+# manifest invariants below, which need a populated directory to mean anything.
 SEQUENCE = [
     ["dadd",    "--count=20", "--maxdepth=3", "--seed=a1"],
     ["add",     "--count=250", "--filesize=200-4k", "--seed=a2"],
-    ["rename",  "--count=25%", "--seed=a3"],
-    ["move",    "--count=25%", "--seed=a4"],
-    ["drename", "--count=20%", "--seed=a5"],
-    ["dmove",   "--count=20%", "--maxdepth=3", "--seed=a6"],
-    ["delete",  "--count=20%", "--seed=a7"],
-    ["ddelete", "--count=20%", "--seed=a8"],
+    ["modify",  "--count=30%", "--seed=a3"],
+    ["rename",  "--count=25%", "--seed=a4"],
+    ["move",    "--count=25%", "--seed=a5"],
+    ["drename", "--count=20%", "--seed=a6"],
+    ["dmove",   "--count=20%", "--maxdepth=3", "--seed=a7"],
+    ["delete",  "--count=20%", "--seed=a8"],
+    ["ddelete", "--count=20%", "--seed=a9"],
 ]
 
 HASH_RE = re.compile(r"Manifest hash is ([0-9a-f]{32})")
@@ -203,6 +209,32 @@ def main():
             detail = "\n".join(list(difflib.unified_diff(
                 a, b, "before rebuild", "after rebuild", lineterm=""))[:20])
         report(identical, "rebuilt manifest is byte-identical", detail)
+
+        print("\n=== clean removes what it created, and nothing else ===")
+        # Two files dummydir did not create, both of which must survive.
+        # The DD_ prefixed one is the one that matters: clean walks the tree deleting
+        # DD_ files, so this one does get picked up and examined, and is only spared
+        # because its contents do not start with the marker dummydir writes into
+        # everything it creates. That check is the only thing standing between a
+        # user's file and deletion if it happens to be named like ours.
+        decoy = Path(target) / "DD_not_ours.bin"
+        decoy.write_bytes(b"this file was not written by dummydir")
+        bystander = Path(target) / "not_ours.txt"
+        bystander.write_text("user data", encoding="utf-8")
+
+        code, out = run(exe, target, ["clean"])
+        report(code == 0, "clean exit 0", out if code != 0 else "")
+
+        leftover = [q for q in Path(target).rglob("DD_*") if q != decoy]
+        report(not leftover,
+               f"every item dummydir created is gone ({len(leftover)} left behind)",
+               "\n".join(str(q) for q in leftover[:5]))
+        report(not manifest_path(target).is_file(),
+               "manifest file removed once nothing is left to record")
+        report(decoy.is_file(),
+               "a DD_ prefixed file it did not write was spared")
+        report(bystander.is_file(),
+               "a file with an unrelated name was left alone")
 
         print("\n=== same seeds reproduce the same result ===")
         second = workspace / "run2"
