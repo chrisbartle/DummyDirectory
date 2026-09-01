@@ -250,7 +250,11 @@ void DDManifest::RelocateFileBlock(uint64_t firstPos, uint64_t count)
 
 /**
  * @brief DDManifest::ComputeManifestHash
- * Computes the MD5 hash of the manifest file (and thus the entire directory tree) and returns it
+ * Computes the MD5 hash of the manifest's contents (and thus the entire directory tree) and
+ * returns it. Comment lines are deliberately left out of the hash: one of them records the
+ * version of the tool that wrote the file, so hashing them would change the result on every
+ * release even when the directory being described is byte for byte the same. Skipping them
+ * means the hash describes the directory alone, and stays comparable across versions.
  * @return MD5 hash as a string
  */
 string DDManifest::ComputeManifestHash()
@@ -258,14 +262,17 @@ string DDManifest::ComputeManifestHash()
     //Open the file
     std::ifstream inFile(m_absoluteManifestPath, std::ios::binary);
 
-    //Iterate through the file data and build the hash
+    //Read a line at a time so that comments can be left out. The newline is fed back into the
+    //hash because it is part of the file's real content and keeps entries separated - without
+    //it two different sets of entries could otherwise run together into the same byte stream.
     DDMD5Hasher hasher;
-    char buffer[DDOperation::BUFFER_SIZE];
-    inFile.read(buffer, DDOperation::BUFFER_SIZE);
-    while (inFile.gcount() > 0)
+    std::string lineString;
+    while (std::getline(inFile, lineString))
     {
-        hasher.update(buffer, inFile.gcount());
-        inFile.read(buffer, DDOperation::BUFFER_SIZE);
+        if (lineString.starts_with('#'))
+            continue;
+        hasher.update(lineString.data(), lineString.length());
+        hasher.update("\n", 1);
     }
     return hasher.finalize();
 }

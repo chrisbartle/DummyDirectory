@@ -70,6 +70,27 @@ include(GNUInstallDirs)
 install(TARGETS dummydir DESTINATION bin)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/dummydir.1 DESTINATION share/man/man1)
 
+# Tests. Run them with "ctest --test-dir build --output-on-failure".
+enable_testing()
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_FOUND)
+    add_test(NAME lifecycle
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/lifecycle_test.py
+                $<TARGET_FILE:dummydir>)
+    # Each case reproduces a bug that was found and fixed, so a reintroduced fault
+    # is reported by name rather than as an unexplained change in behaviour.
+    add_test(NAME regression
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/regression_test.py
+                $<TARGET_FILE:dummydir>)
+    # The sequence builds a couple of hundred files twice over, so give it room on a
+    # slow or loaded machine without letting a genuine hang run forever.
+    set_tests_properties(lifecycle regression PROPERTIES TIMEOUT 600)
+else()
+    message(WARNING "Python3 not found - the lifecycle and regression tests will not be registered.")
+endif()
+
 #CPACK stuff
 set(CPACK_PACKAGE_NAME "DummyDir")
 set(CPACK_PACKAGE_VENDOR "Chris Bartle")
