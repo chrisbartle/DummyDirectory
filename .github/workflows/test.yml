@@ -1,0 +1,45 @@
+name: Tests
+
+# The release workflow only runs on a tag, which is far too late to learn that
+# something is broken. This one runs on ordinary pushes and pull requests.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      # Run every platform to completion rather than cancelling the rest on the
+      # first failure - knowing whether a problem is platform specific is most of
+      # the diagnosis.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # The tests are driven by Python, and CMake only registers them if it can
+      # find an interpreter. Installing it explicitly means a change to the runner
+      # image cannot quietly turn the test suite off.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      # -C Release is required by multi-config generators (the Visual Studio
+      # generator the Windows runner picks by default) and is ignored by the rest.
+      # --no-tests=error matters more than it looks: ctest exits 0 when it finds no
+      # tests at all, so without it a build where Python was missing - and the tests
+      # therefore never registered - would report success having run nothing.
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure --no-tests=error
