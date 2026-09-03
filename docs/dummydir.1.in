@@ -199,6 +199,11 @@ Numeric flags can be presented as a single number (eg 101), range of
 numbers (eg 101-150), percentage (50%), or range of percentages
 (25%-50%). A letter can be placed after the number to indicate
 a base 2 multiplier (eg 10k = 10240).
+.PP
+.B dummydir
+will only directly manipulate and delete files that it creates
+though directory operations will affect all files in it. It is generally
+recommended that foreign files be kept out of the target directory.
 .SH AUTHOR
 Written by Chris Bartle.
 .SH LICENSE
