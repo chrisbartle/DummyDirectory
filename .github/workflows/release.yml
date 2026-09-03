@@ -25,6 +25,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # The tests are driven by Python, and CMake only registers them if it can
+      # find an interpreter
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       # Install rpm tooling on Ubuntu runner to enable CPack RPM generation
       - name: Install RPM Build Tools (Ubuntu)
         if: runner.os == 'Linux'
@@ -37,6 +44,12 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release
+
+      # -C Release is needed by multi-config generators and ignored by the rest.
+      # --no-tests=error turns "nothing was registered" into a failure rather than
+      # a silent pass, which is what ctest does by default.
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure --no-tests=error
 
       - name: Package with CPack
         run: cpack --config build/CPackConfig.cmake
@@ -73,10 +86,11 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y cmake ninja gcc
+            pkg install -y cmake ninja gcc python3
           run: |
             cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
             cmake --build build
+            ctest --test-dir build --output-on-failure --no-tests=error
             cpack --config build/CPackConfig.cmake
 
       - name: Upload FreeBSD Artifacts
